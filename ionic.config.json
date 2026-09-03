@@ -1,0 +1,7 @@
+{
+  "name": "APP_VENTA_TICKETS",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "react-vite"
+}
