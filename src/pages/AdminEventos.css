@@ -1,0 +1,91 @@
+.admin-toolbar {
+  --background: #1a1e52;
+  --color: #ffffff;
+  --border-color: transparent;
+}
+
+.toolbar-logo {
+  height: 28px;
+  width: auto;
+  object-fit: contain;
+  margin-left: 6px;
+  display: block;
+}
+
+.admin-content { --background: #f4f6fb; }
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+  color: #9da5b4;
+  gap: 8px;
+}
+
+.admin-eventos-lista {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-evento-card {
+  position: relative;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 14px 40px 14px 14px;
+  box-shadow: 0 3px 12px rgba(15, 52, 96, 0.08);
+  cursor: pointer;
+}
+
+.admin-evento-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.admin-evento-nombre { font-size: 0.92rem; font-weight: 700; color: #1a1e52; }
+
+.badge-estado-evento { font-size: 0.62rem; font-weight: 700; flex-shrink: 0; }
+.badge-activo     { --background: #d4f1dd; --color: #155724; }
+.badge-proceso    { --background: #eef0fb; --color: #2d358c; }
+.badge-proximo    { --background: #e2f0fe; --color: #0b5cab; }
+.badge-cancelado  { --background: #fde8e8; --color: #7f1d1d; }
+.badge-finalizado { --background: #f0f0f0; --color: #6b7a90; }
+
+.admin-evento-detalle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #6b7a90;
+  font-size: 0.8rem;
+  margin-bottom: 3px;
+}
+.admin-evento-detalle ion-icon { font-size: 0.9rem; color: #2d358c; flex-shrink: 0; }
+
+.admin-evento-chevron {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9da5b4;
+  font-size: 1.1rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .admin-content { --background: #101624; }
+  .loading-state  { color: #6b7a90; }
+  .admin-evento-card { background: #1a2035; box-shadow: 0 3px 12px rgba(0,0,0,.4); }
+  .admin-evento-nombre { color: #e8ecf5; }
+  .admin-evento-detalle { color: #9da5b4; }
+
+  .badge-activo     { --background: #0e2a18; --color: #4ade80; }
+  .badge-proceso    { --background: #1e2540; --color: #7b8fdc; }
+  .badge-proximo    { --background: #0e2540; --color: #5fb3f7; }
+  .badge-cancelado  { --background: #2a0e0e; --color: #f87171; }
+  .badge-finalizado { --background: #1e2540; --color: #6b7a90; }
+}

@@ -1,0 +1,196 @@
+.vender-toolbar {
+  --background: #2d358c;
+  --color: #ffffff;
+  --border-color: transparent;
+}
+
+.toolbar-logo {
+  height: 28px;
+  width: auto;
+  object-fit: contain;
+  margin-left: 6px;
+  display: block;
+}
+
+.vender-content { --background: #f4f6fb; }
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+  color: #9da5b4;
+  gap: 8px;
+}
+
+.eventos-list {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.evento-card {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 8px 28px rgba(15, 52, 96, 0.1);
+}
+
+.evento-banner {
+  width: 100%;
+  height: 150px;
+  overflow: hidden;
+  background: #e0e6f0;
+}
+
+.evento-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.evento-body { padding: 14px 16px; }
+
+.evento-nombre {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1a1e52;
+  margin: 0 0 10px;
+  line-height: 1.3;
+}
+
+.evento-detalle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #6b7a90;
+  font-size: 0.82rem;
+  margin-bottom: 5px;
+}
+.evento-detalle ion-icon { font-size: 0.95rem; color: #2d358c; flex-shrink: 0; }
+
+.btn-vender {
+  --background: #2d358c;
+  --background-activated: #1a1e52;
+  --border-radius: 10px;
+  --color: #ffffff;
+  font-weight: 600;
+  margin-top: 12px;
+}
+
+.btn-ver-precios {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  margin-top: 4px;
+  padding: 9px 12px;
+  background: #eef0fb;
+  border: 1px solid #d9dee8;
+  border-radius: 10px;
+  color: #2d358c;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-ver-precios ion-icon:first-child { font-size: 0.95rem; }
+.btn-ver-precios span { flex: 1; text-align: left; }
+.btn-ver-precios .chevron { font-size: 1rem; color: #6b7a90; }
+.btn-ver-precios:active { background: #e2e5f8; }
+
+.precios-panel {
+  margin-top: 10px;
+  border: 1px solid #e6e9f2;
+  border-radius: 12px;
+  background: #fafbfe;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.precios-cargando {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0;
+}
+
+.precios-vacio {
+  font-size: 0.78rem;
+  color: #9da5b4;
+  text-align: center;
+  margin: 4px 0;
+}
+
+.precio-localidad-bloque {
+  padding-bottom: 8px;
+  border-bottom: 1px solid #eceff6;
+}
+.precio-localidad-bloque:last-child { border-bottom: none; padding-bottom: 0; }
+
+.precio-localidad-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.precio-localidad-nombre { font-size: 0.83rem; font-weight: 700; color: #1a1e52; }
+.precio-localidad-base   { font-size: 0.85rem; font-weight: 800; color: #2d358c; flex-shrink: 0; }
+
+.precio-metodos-lista {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.precio-metodo-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px;
+  background: #ffffff;
+  border-radius: 7px;
+  border: 1px solid #eceff6;
+}
+.precio-metodo-nombre { font-size: 0.75rem; color: #6b7a90; font-weight: 600; }
+.precio-metodo-final  { font-size: 0.8rem; color: #1a1e52; font-weight: 800; }
+
+.btn-sumar-comisiones {
+  --border-color: #2d358c;
+  --color: #2d358c;
+  --border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.78rem;
+  margin: 2px 0 0;
+  align-self: flex-start;
+}
+
+@media (prefers-color-scheme: dark) {
+  .vender-content { --background: #101624; }
+  .loading-state  { color: #6b7a90; }
+  .evento-card    { background: #1a2035; border-color: #2a3050; }
+  .evento-banner  { background: #0e1422; }
+  .evento-nombre  { color: #e8ecf5; }
+  .evento-detalle { color: #9da5b4; }
+
+  .btn-ver-precios      { background: #222840; border-color: #2a3050; color: #7b8fdc; }
+  .btn-ver-precios:active { background: #262c47; }
+  .btn-ver-precios .chevron { color: #6b7a90; }
+
+  .precios-panel        { background: #171d30; border-color: #2a3050; }
+  .precios-vacio        { color: #6b7a90; }
+  .precio-localidad-bloque { border-bottom-color: #2a3050; }
+  .precio-localidad-nombre { color: #e8ecf5; }
+  .precio-localidad-base   { color: #7b8fdc; }
+  .precio-metodo-fila   { background: #1a2035; border-color: #2a3050; }
+  .precio-metodo-nombre { color: #9da5b4; }
+  .precio-metodo-final  { color: #e8ecf5; }
+  .btn-sumar-comisiones { --border-color: #7b8fdc; --color: #7b8fdc; }
+}

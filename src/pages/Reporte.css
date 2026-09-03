@@ -1,0 +1,177 @@
+.reporte-toolbar {
+  --background: #2d358c;
+  --color: #ffffff;
+  --border-color: transparent;
+}
+
+.toolbar-logo {
+  height: 28px;
+  width: auto;
+  object-fit: contain;
+  margin-left: 6px;
+  display: block;
+}
+
+.reporte-content { --background: #f4f6fb; }
+
+.reporte-container {
+  padding: 16px;
+  max-width: 540px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.reporte-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 3px 12px rgba(15, 52, 96, 0.08);
+}
+
+.reporte-card-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #9da5b4;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin: 0 0 12px;
+}
+
+.fechas-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.fecha-campo { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.fecha-campo label { font-size: 0.72rem; color: #6b7a90; font-weight: 600; }
+.fecha-campo input[type="date"] {
+  border: 1px solid #d9dee8;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  color: #1a1e52;
+  background: #ffffff;
+}
+
+.rangos-rapidos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.chip-rango {
+  border: 1px solid #c5cfe0;
+  background: #ffffff;
+  color: #2d358c;
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.chip-rango:active { background: #eef0fb; }
+
+.btn-generar {
+  --background: #2d358c;
+  --background-activated: #1a1e52;
+  --border-radius: 10px;
+  --color: #ffffff;
+  font-weight: 700;
+  height: 46px;
+  margin: 0;
+}
+.btn-spinner { width: 18px; height: 18px; margin-right: 6px; }
+
+.reporte-error {
+  font-size: 0.82rem;
+  color: #e74c3c;
+  background: #fde8e8;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 12px 0 0;
+  text-align: center;
+}
+
+.reporte-vacio { padding: 24px 8px; text-align: center; }
+
+.kpis-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.kpi-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 14px 10px;
+  box-shadow: 0 3px 12px rgba(15, 52, 96, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+.kpi-icon { font-size: 1.4rem; color: #2d358c; }
+.kpi-valor { font-size: 1.15rem; font-weight: 800; color: #1a1e52; }
+.kpi-label { font-size: 0.7rem; color: #9da5b4; font-weight: 600; }
+
+.reporte-aviso-otros {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: #fef3e2;
+  color: #7a4a00;
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+.reporte-aviso-otros ion-icon { font-size: 1.2rem; flex-shrink: 0; color: #f08121; }
+
+.reporte-sin-datos { font-size: 0.85rem; color: #6b7a90; margin: 0; }
+
+.reporte-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f2f8;
+}
+.reporte-fila:last-child { border-bottom: none; }
+.reporte-fila-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.reporte-fila-nombre { font-size: 0.87rem; font-weight: 700; color: #1a1e52; }
+.reporte-fila-sub { font-size: 0.73rem; color: #9da5b4; }
+.reporte-fila-monto { font-size: 0.95rem; font-weight: 800; color: #2d358c; flex-shrink: 0; }
+
+@media (prefers-color-scheme: dark) {
+  .reporte-content    { --background: #101624; }
+  .reporte-card       { background: #1a2035; box-shadow: 0 3px 12px rgba(0,0,0,.4); }
+  .reporte-card-title { color: #6b7a90; }
+  .fecha-campo label  { color: #9da5b4; }
+  .fecha-campo input[type="date"] {
+    background: #222840;
+    border-color: #2a3050;
+    color: #e8ecf5;
+    color-scheme: dark;
+  }
+  .chip-rango { background: #1a2035; border-color: #2a3050; color: #7b8fdc; }
+  .chip-rango:active { background: #222840; }
+
+  .kpi-card  { background: #1a2035; box-shadow: 0 3px 12px rgba(0,0,0,.4); }
+  .kpi-icon  { color: #7b8fdc; }
+  .kpi-valor { color: #e8ecf5; }
+  .kpi-label { color: #6b7a90; }
+
+  .reporte-aviso-otros { background: #2a1400; color: #f08121; }
+
+  .reporte-sin-datos  { color: #9da5b4; }
+  .reporte-fila       { border-bottom-color: #2a3050; }
+  .reporte-fila-nombre{ color: #e8ecf5; }
+  .reporte-fila-sub   { color: #9da5b4; }
+  .reporte-fila-monto { color: #7b8fdc; }
+}

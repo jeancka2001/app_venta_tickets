@@ -1,0 +1,152 @@
+.venta-toolbar {
+  --background: #2d358c;
+  --color: #ffffff;
+  --border-color: transparent;
+}
+.venta-toolbar ion-back-button { --color: #ffffff; }
+
+.venta-content { --background: #f4f6fb; }
+
+.venta-container {
+  padding: 16px;
+  max-width: 540px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.imagenes-evento-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+.btn-imagen-evento {
+  --border-radius: 10px;
+  --border-color: #2d358c;
+  --color: #2d358c;
+  font-weight: 600;
+}
+
+.venta-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 3px 12px rgba(15, 52, 96, 0.08);
+}
+
+.venta-card-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #9da5b4;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin: 0 0 12px;
+}
+
+.cliente-buscar-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.cliente-input { flex: 1; --border-radius: 10px; --color: #1a1e52; }
+.btn-buscar {
+  --background: #2d358c;
+  --background-activated: #1a1e52;
+  --color: #ffffff;
+  --border-radius: 10px;
+  height: 46px;
+  width: 46px;
+  margin: 0;
+}
+
+.cliente-nuevo-form {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.cliente-nuevo-aviso {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: #b7510a;
+  background: #fef3e2;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 0;
+}
+.btn-crear-cliente {
+  --background: #2d358c;
+  --background-activated: #1a1e52;
+  --border-radius: 10px;
+  --color: #ffffff;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.cliente-encontrado {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cliente-ok-icon { font-size: 1.6rem; color: #27ae60; flex-shrink: 0; }
+.cliente-datos { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cliente-nombre { font-size: 0.92rem; font-weight: 700; color: #1a1e52; }
+.cliente-sub { font-size: 0.78rem; color: #6b7a90; }
+.badge-nuevo {
+  align-self: flex-start;
+  --background: #eef0fb;
+  --color: #2d358c;
+  font-size: 0.65rem;
+  margin-top: 3px;
+}
+
+.venta-error {
+  font-size: 0.82rem;
+  color: #e74c3c;
+  background: #fde8e8;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 12px 0 0;
+  text-align: center;
+}
+
+.loading-precios { display: flex; justify-content: center; padding: 20px 0; }
+.sin-precios { font-size: 0.85rem; text-align: center; margin: 8px 0 0; }
+
+.localidad-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 4px;
+  border-bottom: 1px solid #f0f2f8;
+  cursor: pointer;
+}
+.localidad-row:last-child { border-bottom: none; }
+.localidad-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.localidad-nombre { font-size: 0.9rem; font-weight: 700; color: #1a1e52; }
+.localidad-disp { font-size: 0.75rem; color: #6b7a90; }
+.localidad-precio-row { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.localidad-precio { font-size: 0.95rem; font-weight: 800; color: #2d358c; }
+.localidad-precio-row ion-icon { color: #9da5b4; }
+
+@media (prefers-color-scheme: dark) {
+  .venta-content    { --background: #101624; }
+  .btn-imagen-evento { --border-color: #7b8fdc; --color: #7b8fdc; }
+  .venta-card       { background: #1a2035; box-shadow: 0 3px 12px rgba(0,0,0,.4); }
+  .venta-card-title { color: #6b7a90; }
+  .cliente-input    { --color: #e8ecf5; --background: #222840; }
+  .cliente-nombre   { color: #e8ecf5; }
+  .cliente-sub      { color: #9da5b4; }
+  .badge-nuevo      { --background: #1e2540; --color: #7b8fdc; }
+  .localidad-row    { border-bottom-color: #2a3050; }
+  .localidad-nombre { color: #e8ecf5; }
+  .localidad-disp   { color: #9da5b4; }
+  .localidad-precio { color: #7b8fdc; }
+}

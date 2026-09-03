@@ -1,0 +1,89 @@
+.perfil-toolbar {
+  --background: #2d358c;
+  --color: #ffffff;
+  --border-color: transparent;
+}
+
+.toolbar-logo {
+  height: 28px;
+  width: auto;
+  object-fit: contain;
+  margin-left: 6px;
+  display: block;
+}
+
+.perfil-content { --background: #f4f6fb; }
+
+.perfil-avatar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: linear-gradient(160deg, #2d358c 0%, #3d45b0 100%);
+  padding: 32px 24px 36px;
+}
+
+.avatar-circle {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  border: 3px solid rgba(255, 255, 255, 0.4);
+}
+.avatar-inicial {
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: #ffffff;
+  text-transform: uppercase;
+}
+
+.perfil-nombre { color: #ffffff; font-size: 1.2rem; font-weight: 700; margin: 0 0 4px; }
+.perfil-rol {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.85rem;
+  margin: 0;
+  text-transform: capitalize;
+}
+
+.perfil-items {
+  background: #ffffff;
+  border-radius: 16px;
+  margin: -16px 16px 0;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(15, 52, 96, 0.08);
+  position: relative;
+  z-index: 1;
+}
+.perfil-item {
+  padding: 14px 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.perfil-item:last-child { border-bottom: none; }
+.item-label { font-size: 0.75rem; color: #9da5b4; margin: 0 0 2px; display: block; }
+.item-value { font-size: 0.9rem; color: #1a1e52; font-weight: 500; margin: 0; }
+
+.perfil-logout { padding: 24px 16px 32px; }
+.btn-logout {
+  --background: #fff;
+  --background-activated: #fef0f0;
+  --border-radius: 12px;
+  --color: #e74c3c;
+  --box-shadow: 0 2px 12px rgba(231, 76, 60, 0.15);
+  font-weight: 600;
+  height: 50px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .perfil-content { --background: #101624; }
+  .perfil-items { background: #1a2035; box-shadow: 0 2px 12px rgba(0,0,0,.4); }
+  .perfil-item  { border-bottom-color: #2a3050; }
+  .item-label   { color: #6b7a90; }
+  .item-value   { color: #e8ecf5; }
+  .btn-logout   { --background: #1e1010; --background-activated: #2a0e0e; --color: #f87171; --box-shadow: none; }
+}

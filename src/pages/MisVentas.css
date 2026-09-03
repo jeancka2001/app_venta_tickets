@@ -1,0 +1,177 @@
+.misventas-toolbar {
+  --background: #2d358c;
+  --color: #ffffff;
+  --border-color: transparent;
+}
+
+.toolbar-logo {
+  height: 28px;
+  width: auto;
+  object-fit: contain;
+  margin-left: 6px;
+  display: block;
+}
+
+.misventas-content { --background: #f4f6fb; }
+
+.misventas-container {
+  padding: 16px;
+  max-width: 540px;
+  margin: 0 auto;
+}
+
+.misventas-fechas-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 3px 12px rgba(15, 52, 96, 0.08);
+  margin-bottom: 12px;
+}
+.misventas-fechas-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #9da5b4;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin: 0 0 12px;
+}
+
+.fechas-row { display: flex; gap: 10px; margin-bottom: 12px; }
+.fecha-campo { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.fecha-campo label { font-size: 0.72rem; color: #6b7a90; font-weight: 600; }
+.fecha-campo input[type="date"] {
+  border: 1px solid #d9dee8;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  color: #1a1e52;
+  background: #ffffff;
+}
+
+.rangos-rapidos { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-rango {
+  border: 1px solid #c5cfe0;
+  background: #ffffff;
+  color: #2d358c;
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.chip-rango:active { background: #eef0fb; }
+
+.misventas-total {
+  font-size: 0.78rem;
+  color: #6b7a90;
+  margin: 0 0 12px;
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+  color: #9da5b4;
+  gap: 8px;
+}
+
+.misventas-vacio { padding: 32px 0; text-align: center; }
+
+.registros-lista { display: flex; flex-direction: column; gap: 10px; }
+
+.registro-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 3px 12px rgba(15, 52, 96, 0.08);
+  cursor: pointer;
+}
+
+.registro-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.registro-evento { font-size: 0.9rem; font-weight: 700; color: #1a1e52; }
+
+.badge-reg { font-size: 0.65rem; font-weight: 700; flex-shrink: 0; }
+.badge-pagado    { --background: #d4f1dd; --color: #155724; }
+.badge-pendiente { --background: #fef3e2; --color: #b7510a; }
+.badge-comprobar { --background: #eef0fb; --color: #2d358c; }
+.badge-anulado   { --background: #fde8e8; --color: #7f1d1d; }
+.badge-expirado  { --background: #f0f0f0; --color: #6b7a90; }
+
+.registro-detalle {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: #6b7a90;
+  margin-bottom: 8px;
+}
+
+.registro-bottom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #f0f2f8;
+}
+.registro-total { font-size: 0.95rem; font-weight: 800; color: #2d358c; }
+.registro-boletos {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: #6b7a90;
+  flex: 1;
+}
+.boletos-falta { color: #c0392b; font-weight: 700; }
+.registro-chevron { color: #9da5b4; }
+
+.btn-cargar-mas {
+  --border-color: #2d358c;
+  --color: #2d358c;
+  --border-radius: 10px;
+  margin-top: 14px;
+  font-weight: 700;
+}
+
+@media (prefers-color-scheme: dark) {
+  .misventas-content { --background: #101624; }
+
+  .misventas-fechas-card  { background: #1a2035; box-shadow: 0 3px 12px rgba(0,0,0,.4); }
+  .misventas-fechas-title { color: #6b7a90; }
+  .fecha-campo label      { color: #9da5b4; }
+  .fecha-campo input[type="date"] {
+    background: #222840;
+    border-color: #2a3050;
+    color: #e8ecf5;
+    color-scheme: dark;
+  }
+  .chip-rango           { background: #1a2035; border-color: #2a3050; color: #7b8fdc; }
+  .chip-rango:active     { background: #222840; }
+
+  .misventas-total   { color: #9da5b4; }
+  .loading-state      { color: #6b7a90; }
+  .registro-card      { background: #1a2035; box-shadow: 0 3px 12px rgba(0,0,0,.4); }
+  .registro-evento    { color: #e8ecf5; }
+  .registro-detalle   { color: #9da5b4; }
+  .registro-bottom    { border-top-color: #2a3050; }
+  .registro-total     { color: #7b8fdc; }
+  .registro-boletos   { color: #9da5b4; }
+  .btn-cargar-mas      { --border-color: #7b8fdc; --color: #7b8fdc; }
+
+  .badge-pagado    { --background: #0e2a18; --color: #4ade80; }
+  .badge-pendiente { --background: #2a1400; --color: #f08121; }
+  .badge-comprobar { --background: #1e2540; --color: #7b8fdc; }
+  .badge-anulado   { --background: #2a0e0e; --color: #f87171; }
+  .badge-expirado  { --background: #1e2540; --color: #6b7a90; }
+}

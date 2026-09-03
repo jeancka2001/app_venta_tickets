@@ -1,0 +1,123 @@
+.buscar-toolbar {
+  --background: #2d358c;
+  --color: #ffffff;
+  --border-color: transparent;
+}
+
+.toolbar-logo {
+  height: 28px;
+  width: auto;
+  object-fit: contain;
+  margin-left: 6px;
+  display: block;
+}
+
+.buscar-content { --background: #f4f6fb; }
+
+.buscar-container {
+  padding: 16px;
+  max-width: 540px;
+  margin: 0 auto;
+}
+
+.buscar-row { display: flex; gap: 8px; align-items: center; }
+.buscar-input { flex: 1; --border-radius: 10px; --color: #1a1e52; }
+.btn-buscar {
+  --background: #2d358c;
+  --background-activated: #1a1e52;
+  --color: #ffffff;
+  --border-radius: 10px;
+  height: 46px;
+  width: 46px;
+  margin: 0;
+}
+
+.buscar-error {
+  font-size: 0.82rem;
+  color: #e74c3c;
+  background: #fde8e8;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 12px 0 0;
+  text-align: center;
+}
+
+.buscar-nombre-cliente {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1a1e52;
+  margin: 16px 0 8px;
+}
+
+.buscar-vacio { padding: 32px 0; text-align: center; }
+
+.registros-lista { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+
+.registro-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 3px 12px rgba(15, 52, 96, 0.08);
+  cursor: pointer;
+}
+
+.registro-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.registro-evento { font-size: 0.9rem; font-weight: 700; color: #1a1e52; }
+
+.badge-reg { font-size: 0.65rem; font-weight: 700; flex-shrink: 0; }
+.badge-pagado    { --background: #d4f1dd; --color: #155724; }
+.badge-pendiente { --background: #fef3e2; --color: #b7510a; }
+.badge-comprobar { --background: #eef0fb; --color: #2d358c; }
+.badge-anulado   { --background: #fde8e8; --color: #7f1d1d; }
+.badge-expirado  { --background: #f0f0f0; --color: #6b7a90; }
+
+.registro-detalle {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: #6b7a90;
+  margin-bottom: 8px;
+}
+
+.registro-bottom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #f0f2f8;
+}
+.registro-total { font-size: 0.95rem; font-weight: 800; color: #2d358c; }
+.registro-boletos {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: #6b7a90;
+  flex: 1;
+}
+.boletos-falta { color: #c0392b; font-weight: 700; }
+.registro-chevron { color: #9da5b4; }
+
+@media (prefers-color-scheme: dark) {
+  .buscar-content { --background: #101624; }
+  .buscar-input   { --color: #e8ecf5; --background: #222840; }
+  .buscar-nombre-cliente { color: #e8ecf5; }
+  .registro-card  { background: #1a2035; box-shadow: 0 3px 12px rgba(0,0,0,.4); }
+  .registro-evento { color: #e8ecf5; }
+  .registro-detalle { color: #9da5b4; }
+  .registro-bottom { border-top-color: #2a3050; }
+  .registro-total { color: #7b8fdc; }
+  .registro-boletos { color: #9da5b4; }
+
+  .badge-pagado    { --background: #0e2a18; --color: #4ade80; }
+  .badge-pendiente { --background: #2a1400; --color: #f08121; }
+  .badge-comprobar { --background: #1e2540; --color: #7b8fdc; }
+  .badge-anulado   { --background: #2a0e0e; --color: #f87171; }
+  .badge-expirado  { --background: #1e2540; --color: #6b7a90; }
+}

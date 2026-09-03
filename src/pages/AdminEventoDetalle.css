@@ -1,0 +1,322 @@
+.admin-loading { display: flex; justify-content: center; padding: 48px 0; }
+.admin-loading-mini { display: flex; justify-content: center; padding: 16px 0; }
+
+.admin-detalle-container {
+  padding: 16px;
+  max-width: 540px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admin-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 3px 12px rgba(15, 52, 96, 0.08);
+}
+
+.admin-evento-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.admin-evento-titulo { font-size: 1.05rem; font-weight: 700; color: #1a1e52; margin: 0; }
+
+.badge-estado-evento { font-size: 0.65rem; font-weight: 700; flex-shrink: 0; }
+.badge-activo     { --background: #d4f1dd; --color: #155724; }
+.badge-proceso    { --background: #eef0fb; --color: #2d358c; }
+.badge-proximo    { --background: #e2f0fe; --color: #0b5cab; }
+.badge-cancelado  { --background: #fde8e8; --color: #7f1d1d; }
+.badge-finalizado { --background: #f0f0f0; --color: #6b7a90; }
+
+.admin-fila {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid #f0f2f8;
+}
+.admin-fila:last-of-type { border-bottom: none; }
+.admin-lbl { font-size: 0.8rem; color: #6b7a90; }
+.admin-val { font-size: 0.82rem; font-weight: 600; color: #1a1e52; text-align: right; }
+
+.admin-botones-fila { display: flex; gap: 8px; margin-top: 12px; }
+.btn-admin-accion {
+  --border-radius: 10px;
+  --border-color: #1a1e52;
+  --color: #1a1e52;
+  flex: 1;
+  font-weight: 600;
+  margin: 0;
+}
+
+.admin-card-titulo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #9da5b4;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin: 0 0 12px;
+}
+
+.admin-sin-datos { font-size: 0.8rem; color: #6b7a90; margin: 0 0 10px; line-height: 1.4; }
+
+.localidad-item {
+  border: 1px solid #eceff6;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+.localidad-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px;
+  cursor: pointer;
+}
+.localidad-info { display: flex; flex-direction: column; gap: 2px; }
+.localidad-nombre { font-size: 0.88rem; font-weight: 700; color: #1a1e52; }
+.localidad-precio { font-size: 0.8rem; font-weight: 700; color: #2d358c; }
+
+.localidad-editor {
+  padding: 12px;
+  border-top: 1px solid #eceff6;
+  background: #fafbfe;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.localidad-nueva { border: 1px dashed #c5cfe0; border-radius: 10px; margin-top: 10px; border-top-width: 1px; }
+
+.localidad-editor-acciones { display: flex; gap: 8px; margin-top: 4px; }
+.btn-localidad-guardar {
+  --background: #2d358c;
+  --background-activated: #1a1e52;
+  --color: #ffffff;
+  --border-radius: 8px;
+  flex: 1;
+  font-weight: 700;
+  margin: 0;
+}
+.btn-localidad-eliminar {
+  --border-color: #e74c3c;
+  --color: #e74c3c;
+  --border-radius: 8px;
+  margin: 0;
+}
+
+.btn-agregar-localidad {
+  --border-color: #2d358c;
+  --color: #2d358c;
+  --border-radius: 10px;
+  font-weight: 700;
+  margin-top: 8px;
+}
+
+.btn-generar-resumen {
+  --background: #1a1e52;
+  --background-activated: #10133a;
+  --color: #ffffff;
+  --border-radius: 10px;
+  font-weight: 700;
+  margin: 10px 0 0;
+}
+
+.resumen-kpis {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin: 14px 0;
+}
+.resumen-kpi {
+  background: #f4f6fb;
+  border-radius: 12px;
+  padding: 14px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+.resumen-kpi ion-icon { font-size: 1.3rem; color: #2d358c; }
+.resumen-kpi-valor { font-size: 1.1rem; font-weight: 800; color: #1a1e52; }
+.resumen-kpi-label { font-size: 0.68rem; color: #9da5b4; font-weight: 600; }
+
+.resumen-subtitulo {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #6b7a90;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 14px 0 6px;
+}
+
+.resumen-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f2f8;
+}
+.resumen-fila:last-child { border-bottom: none; }
+.resumen-fila-info { display: flex; flex-direction: column; gap: 1px; }
+.resumen-fila-nombre { font-size: 0.85rem; font-weight: 700; color: #1a1e52; }
+.resumen-fila-sub { font-size: 0.72rem; color: #9da5b4; }
+.resumen-fila-monto { font-size: 0.9rem; font-weight: 800; color: #2d358c; }
+
+/* ── Factura de Venta Final ── */
+.factura-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.factura-titulo { font-size: 1.02rem; font-weight: 800; color: #1a1e52; margin: 0 0 4px; }
+.factura-sub { font-size: 0.75rem; color: #6b7a90; margin: 0; line-height: 1.5; }
+
+.btn-descargar-pdf {
+  --background: #2d358c;
+  --background-activated: #1a1e52;
+  --color: #ffffff;
+  --border-radius: 8px;
+  flex-shrink: 0;
+  font-weight: 700;
+  font-size: 0.75rem;
+  margin: 0;
+}
+
+.factura-detalle-titulo { margin-top: 14px; }
+
+.factura-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid #f0f2f8;
+}
+.factura-fila:last-of-type { border-bottom: none; }
+.factura-fila-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.factura-fila-nombre { font-size: 0.83rem; font-weight: 700; color: #1a1e52; }
+.factura-fila-sub { font-size: 0.72rem; color: #9da5b4; }
+.factura-fila-derecha { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; }
+.factura-fila-monto { font-size: 0.88rem; font-weight: 800; color: #1a1e52; }
+
+.btn-ver-registros {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: #2d358c;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-ver-registros ion-icon { font-size: 0.85rem; }
+
+.factura-totales {
+  margin-top: 6px;
+  border: 1px solid #e6e9f2;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fafbfe;
+}
+.factura-total-fila {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #1a1e52;
+  padding: 4px 0;
+}
+.factura-total-final {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #2d358c;
+  border-top: 1px solid #e6e9f2;
+  margin-top: 4px;
+  padding-top: 8px;
+}
+
+.registros-origen-lista { padding: 8px 16px; display: flex; flex-direction: column; gap: 8px; }
+.registro-origen-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: #ffffff;
+  border: 1px solid #eceff6;
+  border-radius: 10px;
+  padding: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+.registro-origen-info { display: flex; flex-direction: column; gap: 1px; }
+.registro-origen-id { font-size: 0.85rem; font-weight: 700; color: #1a1e52; }
+.registro-origen-sub { font-size: 0.72rem; color: #9da5b4; }
+.registro-origen-monto { font-size: 0.88rem; font-weight: 800; color: #2d358c; }
+
+@media (prefers-color-scheme: dark) {
+  .admin-card       { background: #1a2035; box-shadow: 0 3px 12px rgba(0,0,0,.4); }
+  .admin-evento-titulo { color: #e8ecf5; }
+  .admin-fila       { border-bottom-color: #2a3050; }
+  .admin-lbl        { color: #9da5b4; }
+  .admin-val        { color: #e8ecf5; }
+  .btn-admin-accion { --border-color: #7b8fdc; --color: #7b8fdc; }
+  .admin-card-titulo { color: #6b7a90; }
+  .admin-sin-datos  { color: #9da5b4; }
+
+  .badge-activo     { --background: #0e2a18; --color: #4ade80; }
+  .badge-proceso    { --background: #1e2540; --color: #7b8fdc; }
+  .badge-proximo    { --background: #0e2540; --color: #5fb3f7; }
+  .badge-cancelado  { --background: #2a0e0e; --color: #f87171; }
+  .badge-finalizado { --background: #1e2540; --color: #6b7a90; }
+
+  .localidad-item   { border-color: #2a3050; }
+  .localidad-nombre { color: #e8ecf5; }
+  .localidad-precio { color: #7b8fdc; }
+  .localidad-editor { background: #171d30; border-top-color: #2a3050; }
+  .localidad-nueva  { border-color: #3a4160; }
+  .btn-localidad-eliminar { --border-color: #f87171; --color: #f87171; }
+  .btn-agregar-localidad  { --border-color: #7b8fdc; --color: #7b8fdc; }
+  .btn-generar-resumen    { --background: #2d358c; }
+
+  .resumen-kpi        { background: #171d30; }
+  .resumen-kpi ion-icon { color: #7b8fdc; }
+  .resumen-kpi-valor  { color: #e8ecf5; }
+  .resumen-kpi-label  { color: #6b7a90; }
+  .resumen-subtitulo  { color: #9da5b4; }
+  .resumen-fila       { border-bottom-color: #2a3050; }
+  .resumen-fila-nombre { color: #e8ecf5; }
+  .resumen-fila-sub   { color: #9da5b4; }
+  .resumen-fila-monto { color: #7b8fdc; }
+
+  .factura-titulo   { color: #e8ecf5; }
+  .factura-sub      { color: #9da5b4; }
+  .btn-descargar-pdf { --background: #2d358c; }
+  .factura-fila     { border-bottom-color: #2a3050; }
+  .factura-fila-nombre { color: #e8ecf5; }
+  .factura-fila-sub    { color: #9da5b4; }
+  .factura-fila-monto  { color: #e8ecf5; }
+  .btn-ver-registros   { color: #7b8fdc; }
+  .factura-totales     { background: #171d30; border-color: #2a3050; }
+  .factura-total-fila  { color: #e8ecf5; }
+  .factura-total-final { color: #7b8fdc; border-top-color: #2a3050; }
+
+  .registro-origen-item { background: #1a2035; border-color: #2a3050; }
+  .registro-origen-id    { color: #e8ecf5; }
+  .registro-origen-sub   { color: #9da5b4; }
+  .registro-origen-monto { color: #7b8fdc; }
+}

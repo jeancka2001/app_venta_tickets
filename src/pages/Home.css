@@ -1,0 +1,158 @@
+.login-content {
+  --background: linear-gradient(160deg, #1a1e52 0%, #1b2a4a 50%, #2d358c 100%);
+}
+
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100%;
+  padding: 48px 24px 32px;
+}
+
+.logo-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 36px;
+}
+
+.logo {
+  width: 180px;
+  max-width: 65vw;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+}
+
+.app-brand-tag {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin: 12px 0 0;
+}
+
+.form-card {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 32px 24px 24px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+.form-title {
+  text-align: center;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #1a1e52;
+  margin: 0 0 4px;
+  letter-spacing: 0.3px;
+}
+
+.form-subtitle {
+  text-align: center;
+  font-size: 0.82rem;
+  color: #6b7a90;
+  margin: 0 0 24px;
+}
+
+.login-input {
+  --border-radius: 10px;
+  --color: #1a1e52;
+  --placeholder-color: #9da5b4;
+  --highlight-color-focused: #2d358c;
+  margin-bottom: 16px;
+}
+
+.login-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  color: #4a5468;
+  margin: 4px 2px 4px;
+  --checkbox-background-checked: #2d358c;
+  --border-color-checked: #2d358c;
+}
+
+.btn-spinner {
+  width: 18px;
+  height: 18px;
+  margin-right: 6px;
+}
+
+/* ── Fila de acciones: Huella / Iniciar sesión ──
+   Botones "medio cuadrados" (poco redondeados, icono arriba + texto abajo,
+   ancho parejo) — mismo estilo que app_tickets. */
+.acciones-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.btn-cuadrado {
+  flex: 1;
+  min-width: 0;
+  height: 72px;
+  margin: 0;
+  --border-radius: 14px;
+  --border-color: #2d358c;
+  --color: #2d358c;
+  --padding-start: 4px;
+  --padding-end: 4px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Ionic mete el contenido del botón en un span interno con flex-row fijo
+   (no expuesto como shadow-part), así que en vez de pelear con eso se usa
+   un contenedor propio adentro con su propio flex-column. */
+.btn-cuadrado-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  line-height: 1.15;
+  white-space: normal;
+}
+
+.btn-cuadrado ion-icon,
+.btn-cuadrado ion-spinner {
+  font-size: 1.35rem;
+  width: 20px;
+  height: 20px;
+}
+
+.btn-cuadrado-inner span {
+  display: block;
+  text-align: center;
+}
+
+.btn-cuadrado-primary {
+  --background: #2d358c;
+  --background-activated: #1a1e52;
+  --background-hover: #3d45b0;
+  --color: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  .form-card {
+    background: #1a2035;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+  }
+  .form-title { color: #e8ecf5; }
+  .form-subtitle { color: #9da5b4; }
+  .login-input {
+    --color: #e8ecf5;
+    --placeholder-color: #6b7a90;
+    --background: #222840;
+  }
+  .login-checkbox { color: #9da5b4; }
+  .btn-cuadrado { --border-color: #7b8fdc; --color: #7b8fdc; }
+  .btn-cuadrado-primary { --color: #ffffff; }
+}

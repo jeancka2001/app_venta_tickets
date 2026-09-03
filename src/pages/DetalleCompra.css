@@ -1,0 +1,260 @@
+.detalle-toolbar {
+  --background: #2d358c;
+  --color: #ffffff;
+  --border-color: transparent;
+}
+.detalle-toolbar ion-back-button { --color: #ffffff; }
+
+.detalle-content { --background: #f4f6fb; }
+
+.detalle-loading { display: flex; justify-content: center; padding: 48px 0; }
+
+.detalle-container {
+  padding: 16px;
+  max-width: 540px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.detalle-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 3px 12px rgba(15, 52, 96, 0.08);
+}
+
+.detalle-card-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #9da5b4;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin: 0 0 12px;
+}
+
+.detalle-evento {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1a1e52;
+  margin: 0 0 12px;
+}
+
+.detalle-fila {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid #f0f2f8;
+}
+.detalle-fila:last-child { border-bottom: none; }
+.detalle-lbl { font-size: 0.82rem; color: #6b7a90; }
+.detalle-val { font-size: 0.85rem; font-weight: 600; color: #1a1e52; text-align: right; }
+
+.detalle-total-fila { padding-top: 10px; }
+.detalle-total { font-size: 1.1rem; font-weight: 800; color: #2d358c; }
+
+.badge-estado { font-size: 0.68rem; font-weight: 700; }
+.estado-pagado    { --background: #d4f1dd; --color: #155724; }
+.estado-pendiente { --background: #fef3e2; --color: #b7510a; }
+.estado-comprobar { --background: #eef0fb; --color: #2d358c; }
+.estado-anulado   { --background: #fde8e8; --color: #7f1d1d; }
+.estado-expirado  { --background: #f0f0f0; --color: #6b7a90; }
+
+.detalle-aviso-falta {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: #fef3e2;
+  color: #7a4a00;
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+.detalle-aviso-falta ion-icon { font-size: 1.3rem; flex-shrink: 0; color: #f08121; }
+
+.detalle-sin-boletos { font-size: 0.85rem; color: #6b7a90; margin: 0; }
+
+.boleto-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f2f8;
+}
+.boleto-row:last-child { border-bottom: none; }
+.boleto-icon { font-size: 1.3rem; color: #9da5b4; }
+.boleto-icon-canjeado { font-size: 1.3rem; color: #27ae60; }
+.boleto-info { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+.boleto-silla { font-size: 0.88rem; font-weight: 700; color: #1a1e52; }
+.boleto-estado { font-size: 0.75rem; color: #6b7a90; }
+
+/* ── Acciones ── */
+.acciones-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.btn-accion {
+  --border-radius: 10px;
+  --border-color: #2d358c;
+  --color: #2d358c;
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin: 0;
+  height: 46px;
+}
+.btn-accion-primaria {
+  --background: #2d358c;
+  --background-activated: #1a1e52;
+  --border-color: #2d358c;
+  --color: #ffffff;
+}
+.btn-accion-peligro {
+  --border-color: #e74c3c;
+  --color: #e74c3c;
+}
+
+/* ── Comprobante ── */
+.comprobantes-galeria {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.comprobante-thumb {
+  width: 84px;
+  height: 84px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #e0e5f0;
+  padding: 0;
+  background: #f4f6fb;
+  cursor: pointer;
+}
+.comprobante-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.comprobante-hint-compartir {
+  font-size: 0.75rem;
+  color: #6b7a90;
+  line-height: 1.4;
+  margin: 0 0 8px;
+}
+
+.btn-adjuntar-foto {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  border: 1.5px dashed #c5cfe0;
+  border-radius: 10px;
+  color: #2d358c;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.comprobante-input-file { display: none; }
+
+.comprobante-numero-campo { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
+.comprobante-numero-campo label { font-size: 0.78rem; font-weight: 700; color: #6b7a90; }
+.comprobante-numero-row { display: flex; gap: 6px; align-items: center; }
+.comprobante-numero-input { flex: 1; --border-radius: 10px; --color: #1a1e52; }
+.btn-num-accion {
+  --border-radius: 10px;
+  --border-color: #2d358c;
+  --color: #2d358c;
+  margin: 0;
+  height: 46px;
+  width: 46px;
+}
+/* El botón "Guardar" usa fill="solid" -- sin --background explícito caía
+   en el azul primario de Ionic por defecto, con el texto/ícono también
+   azul encima (--color heredado de .btn-num-accion), casi invisible. */
+.btn-num-guardar {
+  --background: #2d358c;
+  --background-activated: #1a1e52;
+  --color: #ffffff;
+}
+
+.comprobante-mensaje-dup {
+  font-size: 0.78rem;
+  color: #6b7a90;
+  margin: 10px 0 0;
+}
+.comprobante-mensaje-dup.dup-alerta { color: #c0392b; font-weight: 700; }
+
+.duplicados-lista { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.duplicado-item {
+  font-size: 0.8rem;
+  color: #2d358c;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+/* ── Comentarios ── */
+.comentario-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  background: #f4f6fb;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+.comentario-texto { font-size: 0.85rem; color: #1a1e52; }
+.comentario-autor { font-size: 0.72rem; color: #9da5b4; font-weight: 600; }
+.comentario-input {
+  --border-radius: 10px;
+  --color: #1a1e52;
+  margin-bottom: 10px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .detalle-content    { --background: #101624; }
+  .detalle-card       { background: #1a2035; box-shadow: 0 3px 12px rgba(0,0,0,.4); }
+  .detalle-card-title { color: #6b7a90; }
+  .detalle-evento     { color: #e8ecf5; }
+  .detalle-fila       { border-bottom-color: #2a3050; }
+  .detalle-lbl        { color: #9da5b4; }
+  .detalle-val        { color: #e8ecf5; }
+  .detalle-total      { color: #7b8fdc; }
+
+  .estado-pagado    { --background: #0e2a18; --color: #4ade80; }
+  .estado-pendiente { --background: #2a1400; --color: #f08121; }
+  .estado-comprobar { --background: #1e2540; --color: #7b8fdc; }
+  .estado-anulado   { --background: #2a0e0e; --color: #f87171; }
+  .estado-expirado  { --background: #1e2540; --color: #6b7a90; }
+
+  .detalle-aviso-falta { background: #2a1400; color: #f08121; }
+  .detalle-sin-boletos { color: #9da5b4; }
+  .boleto-row    { border-bottom-color: #2a3050; }
+  .boleto-silla  { color: #e8ecf5; }
+  .boleto-estado { color: #9da5b4; }
+
+  .btn-accion { --border-color: #7b8fdc; --color: #7b8fdc; }
+  .btn-accion-primaria { --color: #ffffff; }
+  .btn-accion-peligro  { --border-color: #f87171; --color: #f87171; }
+
+  .comentario-row   { background: #1e2540; }
+  .comentario-texto { color: #e8ecf5; }
+  .comentario-autor { color: #6b7a90; }
+  .comentario-input { --color: #e8ecf5; --background: #222840; }
+
+  .comprobante-thumb { background: #171d30; border-color: #2a3050; }
+  .comprobante-hint-compartir { color: #9da5b4; }
+  .btn-adjuntar-foto  { border-color: #3a4160; color: #7b8fdc; }
+  .comprobante-numero-campo label { color: #9da5b4; }
+  .comprobante-numero-input { --color: #e8ecf5; --background: #222840; }
+  .btn-num-accion { --border-color: #7b8fdc; --color: #7b8fdc; }
+  .btn-num-guardar { --background: #2d358c; --background-activated: #1a1e52; --color: #ffffff; }
+  .comprobante-mensaje-dup { color: #9da5b4; }
+  .comprobante-mensaje-dup.dup-alerta { color: #f87171; }
+  .duplicado-item { color: #7b8fdc; }
+}

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">T-ickets Ventas</string>
+    <string name="title_activity_main">T-ickets Ventas</string>
+    <string name="package_name">ec.ticketsEC.ventas</string>
+    <string name="custom_url_scheme">ec.ticketsEC.ventas</string>
+</resources>
