@@ -7,7 +7,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
   checkmarkCircleOutline, openOutline, copyOutline, logoWhatsapp, qrCodeOutline, linkOutline,
   cameraOutline, cloudUploadOutline, receiptOutline, sparklesOutline, warningOutline,
+  shareSocialOutline,
 } from 'ionicons/icons';
+import { Share } from '@capacitor/share';
 import axios from 'axios';
 import { MS_LOGIN_AUTH_HEADERS } from '../utils/msLoginAuth';
 import {
@@ -125,15 +127,17 @@ const Pago: React.FC = () => {
     (async () => {
       const activos = await obtenerMetodosPagoActivos(st.codigoEvento);
       const porMetodo = new Map(activos.map(a => [a.metodo, a]));
-      const lista: MetodoItem[] = METODOS_CONFIGURABLES
-        .filter(m => activos.length === 0 || porMetodo.get(m.key)?.activo)
-        .map(m => {
-          const pct = porMetodo.get(m.key)?.comision_porcentaje ?? m.pctDefault;
-          return {
-            key: m.key, label: m.label, pct, categoria: m.categoria,
-            desc: pct > 0 ? `+${Math.round(pct * 100)}% comisión` : 'Sin comisión',
-          };
-        });
+      // Se muestran SIEMPRE todos los métodos, para cualquier perfil
+      // (vendedor, suscriptor o admin). El endpoint metodos_pago_activos
+      // solo se usa para tomar la comisión configurada de cada método;
+      // ya no se usa para ocultar métodos "inactivos".
+      const lista: MetodoItem[] = METODOS_CONFIGURABLES.map(m => {
+        const pct = porMetodo.get(m.key)?.comision_porcentaje ?? m.pctDefault;
+        return {
+          key: m.key, label: m.label, pct, categoria: m.categoria,
+          desc: pct > 0 ? `+${Math.round(pct * 100)}% comisión` : 'Sin comisión',
+        };
+      });
       if (cancelado) return;
       setMetodosDisponibles(lista);
       setMetodo(prev => prev || lista[0]?.key || '');
@@ -225,20 +229,71 @@ const Pago: React.FC = () => {
     }
   };
 
-  const copiarLink = () => {
+  /* Copia con fallback: navigator.clipboard funciona en el WebView de
+     Capacitor (contexto seguro localhost), pero en Android viejos o si
+     la API no está disponible se usa un <textarea> temporal. */
+  const copiarLink = async () => {
     if (!urlPago) return;
-    navigator.clipboard.writeText(urlPago)
-      .then(() => setToast('Link de pago copiado.'))
-      .catch(() => setToast('No se pudo copiar el link.'));
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(urlPago);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = urlPago;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      setToast('Link de pago copiado.');
+    } catch {
+      setToast('No se pudo copiar el link.');
+    }
   };
 
+  /* Normaliza el celular del cliente a formato internacional de Ecuador
+     (593 + número sin cero inicial), tolerando espacios, guiones,
+     prefijo +593 o 09xxxxxxxx. */
+  const celularWhatsapp = (raw?: string): string => {
+    let d = (raw || '').replace(/\D/g, '');
+    if (d.startsWith('593')) d = d.slice(3);
+    d = d.replace(/^0+/, '');
+    return d ? `593${d}` : '';
+  };
+
+  const mensajePago = () =>
+    `Hola${cliente?.nombreCompleto ? ' ' + cliente.nombreCompleto.split(' ')[0] : ''}, ` +
+    `aquí tienes el link para completar el pago de tu entrada a ` +
+    `${st.nombreEvento || 'el evento'}: ${urlPago}`;
+
+  /* WhatsApp directo al número del cliente. wa.me es el esquema oficial
+     y en Android abre la app de WhatsApp con el chat de ese número ya
+     seleccionado. '_system' hace que Capacitor lo abra fuera del WebView. */
   const enviarPorWhatsapp = () => {
     if (!urlPago) return;
-    const digitos = (cliente?.movil || '').replace(/\D/g, '');
-    if (!digitos) { setToast('El cliente no tiene celular registrado.'); return; }
-    const numero = digitos.startsWith('593') ? digitos : `593${digitos.replace(/^0/, '')}`;
-    const mensaje = `Hola${cliente?.nombreCompleto ? ' ' + cliente.nombreCompleto.split(' ')[0] : ''}, aquí tienes el link para completar el pago de tu entrada a ${st.nombreEvento || 'el evento'}: ${urlPago}`;
-    window.open(`https://api.whatsapp.com/send?phone=${numero}&text=${encodeURIComponent(mensaje)}`, '_blank');
+    const numero = celularWhatsapp(cliente?.movil);
+    if (!numero) { setToast('El cliente no tiene celular registrado.'); return; }
+    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensajePago())}`, '_system');
+  };
+
+  /* Hoja de compartir nativa de Android (@capacitor/share): permite
+     mandar el link por cualquier app (WhatsApp a otro contacto, Telegram,
+     correo, copiar, etc.). Si el usuario cancela, no se muestra error. */
+  const compartirLink = async () => {
+    if (!urlPago) return;
+    try {
+      await Share.share({
+        title: 'Link de pago',
+        text: mensajePago(),
+        url: urlPago,
+        dialogTitle: 'Compartir link de pago',
+      });
+    } catch (e) {
+      if (e instanceof Error && /cancel/i.test(e.message)) return;
+      setToast('No se pudo abrir el menú de compartir.');
+    }
   };
 
   const elegirComprobante = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -406,13 +461,17 @@ const Pago: React.FC = () => {
 
             {urlPago && !esQrDuna && (
               <div className="link-acciones-fila">
+                <IonButton fill="outline" size="small" className="btn-link-accion" onClick={enviarPorWhatsapp}>
+                  <IonIcon icon={logoWhatsapp} slot="start" />
+                  WhatsApp al cliente
+                </IonButton>
+                <IonButton fill="outline" size="small" className="btn-link-accion" onClick={compartirLink}>
+                  <IonIcon icon={shareSocialOutline} slot="start" />
+                  Compartir
+                </IonButton>
                 <IonButton fill="outline" size="small" className="btn-link-accion" onClick={copiarLink}>
                   <IonIcon icon={copyOutline} slot="start" />
                   Copiar link
-                </IonButton>
-                <IonButton fill="outline" size="small" className="btn-link-accion" onClick={enviarPorWhatsapp}>
-                  <IonIcon icon={logoWhatsapp} slot="start" />
-                  Enviar por WhatsApp
                 </IonButton>
               </div>
             )}

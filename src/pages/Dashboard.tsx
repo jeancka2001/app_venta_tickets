@@ -11,6 +11,7 @@ import Reporte from './Reporte';
 import Perfil from './Perfil';
 import AdminEventos from './AdminEventos';
 import { obtenerStaffData } from '../utils/staffAuth';
+import './Dashboard.css';
 
 /* El apartado "Admin" (gestión de eventos/localidades) solo lo puede ver
    un perfil admin/super_admin -- mismo criterio que GLOBAL_PROFILES en
@@ -43,12 +44,12 @@ const Dashboard: React.FC = () => {
 
         <IonTabButton tab="buscar" href="/dashboard/buscar">
           <IonIcon icon={searchOutline} />
-          <IonLabel>Buscar Cliente</IonLabel>
+          <IonLabel>Buscar</IonLabel>
         </IonTabButton>
 
         <IonTabButton tab="misventas" href="/dashboard/misventas">
           <IonIcon icon={timeOutline} />
-          <IonLabel>Mis Ventas</IonLabel>
+          <IonLabel>Ventas</IonLabel>
         </IonTabButton>
 
         <IonTabButton tab="reporte" href="/dashboard/reporte">
@@ -59,7 +60,7 @@ const Dashboard: React.FC = () => {
         {puedeAdministrar && (
           <IonTabButton tab="admin" href="/dashboard/admin">
             <IonIcon icon={shieldCheckmarkOutline} />
-            <IonLabel>Admin</IonLabel>
+            <IonLabel>Eventos</IonLabel>
           </IonTabButton>
         )}
 

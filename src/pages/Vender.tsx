@@ -218,9 +218,10 @@ const Vender: React.FC = () => {
 
                               {Array.isArray(metodos) && (
                                 <div className="precio-metodos-lista">
+                                  {/* Se listan todos los métodos (mismo criterio
+                                      que Pago.tsx): la respuesta solo aporta la
+                                      comisión configurada, no oculta métodos. */}
                                   {METODOS_CONFIGURABLES
-                                    .filter(m => metodos.length === 0 ||
-                                      metodos.find(a => a.metodo === m.key)?.activo)
                                     .map(m => {
                                       const cfg = metodos.find(a => a.metodo === m.key);
                                       const pct = cfg?.comision_porcentaje ?? m.pctDefault;

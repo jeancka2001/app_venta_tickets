@@ -1,0 +1,41 @@
+/* Barra de pestañas inferior.
+   Con perfil admin son 6 pestañas (Vender, Buscar, Ventas, Reporte,
+   Eventos, Perfil). Sin estas reglas, en pantallas angostas los
+   botones se descuadran y los dos últimos (Eventos y Perfil) quedaban
+   apretados o fuera de vista. Repartimos el ancho en partes iguales,
+   dejamos que cada botón se encoja (min-width:0) y achicamos icono y
+   texto para que las 6 quepan hasta en un teléfono de 320 px. */
+.main-tab-bar {
+  padding-bottom: env(safe-area-inset-bottom);
+  --border: 0.5px solid rgba(0, 0, 0, 0.1);
+}
+
+.main-tab-bar ion-tab-button {
+  min-width: 0;          /* permite que el botón se encoja bajo su contenido */
+  max-width: none;       /* Ionic pone 240px por defecto; lo quitamos */
+  flex: 1 1 0;           /* todas las pestañas ocupan el mismo ancho */
+  --padding-start: 1px;
+  --padding-end: 1px;
+}
+
+.main-tab-bar ion-tab-button ion-icon {
+  font-size: 21px;
+  margin-bottom: 2px;
+}
+
+.main-tab-bar ion-tab-button ion-label {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  margin: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .main-tab-bar {
+    --border: 0.5px solid rgba(255, 255, 255, 0.12);
+  }
+}
