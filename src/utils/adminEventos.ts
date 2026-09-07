@@ -19,7 +19,37 @@ const URL_UPLOAD_IMG = 'https://codigomarret.online/upload/api/img';
    ese servicio no tiene guard de auth en estas rutas. */
 const URL_MIKROTI = 'https://api.t-ickets.com/mikroti';
 
+/* Descarga de registros en Excel -- vive en cron_speed_ticktes (gateway
+   "mikrotiv2"), mismo botón "Descargar registros" de Evetoespecifico.js. */
+const URL_MIKROTIV2 = 'https://api.t-ickets.com/mikrotiv2';
+
 const jsonHeaders = () => ({ ...staffAuthHeaders(), 'Content-Type': 'application/json' });
+
+const arrayBufferABase64 = (buffer: ArrayBuffer): string => {
+  const bytes = new Uint8Array(buffer);
+  let binario = '';
+  const TAMANO_CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += TAMANO_CHUNK) {
+    binario += String.fromCharCode(...bytes.subarray(i, i + TAMANO_CHUNK));
+  }
+  return btoa(binario);
+};
+
+/* OJO: el handler real (ExportarRegistros en cron_speed_ticktes) no
+   filtra por el :id que se le manda -- devuelve TODOS los registros de
+   compra del sistema, no solo los de este evento. Es el mismo botón que
+   ya usa la web con la misma limitación; se deja documentado acá para no
+   sorprender a quien lo use esperando un archivo ya filtrado. */
+export const descargarReporteEventoExcel = async (idEvento: number): Promise<{ ok: boolean; base64?: string; mensaje?: string }> => {
+  try {
+    const { data } = await axios.get(`${URL_MIKROTIV2}/api/reporte_evento/${idEvento}`, {
+      responseType: 'arraybuffer',
+    });
+    return { ok: true, base64: arrayBufferABase64(data as ArrayBuffer) };
+  } catch {
+    return { ok: false, mensaje: 'No se pudo descargar el reporte. Intenta de nuevo.' };
+  }
+};
 
 export interface EventoAdmin {
   id: number;
@@ -49,6 +79,13 @@ export interface LocalidadAdmin {
   comision_boleto: string;
   habilitar: string;
   mensaje_promocion?: string;
+  /* Vienen del LEFT JOIN contra el catálogo físico de localidades -- null
+     si el nombre no calza exacto con una localidad del espacio. Solo con
+     id_localidad + tipo_localidad en ('fila','mesa') se puede editar
+     asientos uno por uno; 'correlativo' es aforo general sin asientos
+     individuales que mostrar. */
+  id_localidad?: number | null;
+  tipo_localidad?: string | null;
 }
 
 /* No hay un "TODOS" real en el backend -- se piden los estados conocidos
@@ -269,4 +306,83 @@ export const obtenerFacturaFinalEvento = async (codigoEvento: string): Promise<F
     pedir<ResumenOperador>('evento_user'),
   ]);
   return { porFormaPago, porLocalidad, porOperador };
+};
+
+/* ── Asientos individuales (localidades numeradas: fila/mesa) ──
+   Mismo par de herramientas que usa Evetoespecifico.js en la web:
+   - item_localidad (flasapi_speed_comnet/mikroti): alterna Disponible↔
+     Ocupado a mano -- se usa para BLOQUEAR un asiento libre (reservarlo
+     sin venta real), no para liberar uno ya vendido/reservado.
+   - liberar_asientos_admin (MS-LOGIN-BOLETERIA): la herramienta segura
+     para LIBERAR un asiento Reservado/Ocupado -- limpia cedula/
+     id_registraCompra y borra el ticket_usuarios huérfano si existía.
+   Nunca se toca un asiento con cédula real (venta genuina) desde acá,
+   igual que en la web. */
+export interface AsientoItem {
+  id: number;
+  id_localidades: number;
+  fila?: string | null;
+  mesa?: string | null;
+  silla: string;
+  estado: string; // Disponible | Reservado | Ocupado
+  cedula?: string | null;
+  id_registraCompra?: number | null;
+}
+
+export const listarAsientosLocalidad = async (idLocalidad: number): Promise<AsientoItem[]> => {
+  try {
+    const { data } = await axios.get(`${URL_BASE}/listar_localidades_items/${idLocalidad}`, { headers: staffAuthHeaders() });
+    return data?.success && Array.isArray(data.data) ? data.data : [];
+  } catch {
+    return [];
+  }
+};
+
+/* Bloquea (o desbloquea) un asiento libre a mano -- PUT sin cabeceras de
+   autenticación porque esta ruta puntual de flasapi_speed_comnet no las
+   exige (igual que el resto de endpoints "Boleteria/*" que ya usa esta
+   app para OCR y comprobantes). */
+export const cambiarEstadoAsiento = async (idAsiento: number, estado: 'Disponible' | 'Ocupado'): Promise<{ ok: boolean }> => {
+  try {
+    const { data } = await axios.put(`${URL_MIKROTI}/Boleteria/item_localidad`,
+      { id_localidades: [idAsiento], estado }, { headers: { 'Content-Type': 'application/json' } });
+    return { ok: !!data?.estado };
+  } catch {
+    return { ok: false };
+  }
+};
+
+export const liberarAsientosAdmin = async (idSillas: number[]): Promise<{ success: boolean; liberados?: number[]; omitidos?: { id: number; motivo: string }[]; message?: string }> => {
+  try {
+    const { data } = await axios.post(`${URL_BASE}/liberar_asientos_admin`, { id_sillas: idSillas }, { headers: jsonHeaders() });
+    return data;
+  } catch (err: unknown) {
+    return { success: false, message: axios.isAxiosError(err) ? err.response?.data?.message : undefined };
+  }
+};
+
+/* ── Discrepancias (evento) ──
+   Igual que el botón "Discrepancia" de Evetoespecifico.js -- 3 reportes
+   de solo lectura, nada se corrige automáticamente. */
+export interface DiscrepanciaFila { [campo: string]: unknown }
+
+export interface DiscrepanciasEvento {
+  discrepancias: DiscrepanciaFila[];
+  discrepanciasGeneracion: DiscrepanciaFila[];
+  comprasEvento: DiscrepanciaFila[];
+}
+
+export const obtenerDiscrepanciasEvento = async (codigoEvento: string): Promise<DiscrepanciasEvento> => {
+  const headers = { 'Content-Type': 'application/json' };
+  const pedir = (path: string): Promise<DiscrepanciaFila[]> =>
+    axios.post(`${URL_MIKROTI}/Boleteria/analizar/${path}`, { codigo_evento: codigoEvento }, { headers })
+      .then(r => Array.isArray(r.data?.data) ? r.data.data as DiscrepanciaFila[] : [])
+      .catch(() => [] as DiscrepanciaFila[]);
+
+  const [discrepancias, discrepanciasGeneracion, comprasEvento] = await Promise.all([
+    pedir('discrepancias'),
+    pedir('discrepancias-generacion'),
+    pedir('compras-evento'),
+  ]);
+  return { discrepancias, discrepanciasGeneracion, comprasEvento };
 };

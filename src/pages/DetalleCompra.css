@@ -162,6 +162,64 @@
 }
 .comprobante-input-file { display: none; }
 
+/* ── Análisis automático (OCR) del comprobante añadido ── */
+.ocr-analizando {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 0.8rem;
+  color: #6b7a90;
+}
+
+.ocr-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: #b7510a;
+  margin: 10px 0 0;
+}
+
+.ocr-panel {
+  margin-top: 10px;
+  background: #f4f6fb;
+  border: 1px solid #e0e5f0;
+  border-radius: 10px;
+  padding: 12px;
+}
+.ocr-panel-titulo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #2d358c;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+.ocr-dato {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  padding: 3px 0;
+}
+.ocr-dato span:first-child { color: #6b7a90; }
+.ocr-dato span:last-child { color: #1a1e52; font-weight: 700; }
+
+.ocr-sospecha {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: #c0392b;
+  font-weight: 700;
+  margin: 8px 0 0;
+  line-height: 1.4;
+}
+.ocr-hint { font-size: 0.72rem; color: #9da5b4; margin: 8px 0 0; }
+
 .comprobante-numero-campo { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
 .comprobante-numero-campo label { font-size: 0.78rem; font-weight: 700; color: #6b7a90; }
 .comprobante-numero-row { display: flex; gap: 6px; align-items: center; }
@@ -250,6 +308,16 @@
   .comprobante-thumb { background: #171d30; border-color: #2a3050; }
   .comprobante-hint-compartir { color: #9da5b4; }
   .btn-adjuntar-foto  { border-color: #3a4160; color: #7b8fdc; }
+
+  .ocr-analizando { color: #9da5b4; }
+  .ocr-error      { color: #f08121; }
+  .ocr-panel      { background: #1e2540; border-color: #2a3050; }
+  .ocr-panel-titulo { color: #7b8fdc; }
+  .ocr-dato span:first-child { color: #9da5b4; }
+  .ocr-dato span:last-child  { color: #e8ecf5; }
+  .ocr-sospecha   { color: #f87171; }
+  .ocr-hint       { color: #6b7a90; }
+
   .comprobante-numero-campo label { color: #9da5b4; }
   .comprobante-numero-input { --color: #e8ecf5; --background: #222840; }
   .btn-num-accion { --border-color: #7b8fdc; --color: #7b8fdc; }

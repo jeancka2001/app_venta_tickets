@@ -160,6 +160,25 @@ const Pago: React.FC = () => {
   const { subtotal, comisionServicio, ivaImporte, comisionBancaria, total } =
     calcularTotalConComision(precioNum, cantidadNum, comBoleto, ivaRate, met.pct);
 
+  /* Verificación local del comprobante leído por OCR contra lo que
+     debería depositarse: el backend solo avisa de posible adulteración
+     de la imagen, no si el monto/banco coinciden con ESTA venta -- eso
+     solo lo sabe el frontend. Tolerancia de 1 centavo por redondeo. */
+  const ocrAvisos: string[] = [];
+  if (ocrResultado) {
+    if (typeof ocrResultado.monto === 'number' && Math.abs(ocrResultado.monto - total) > 0.01) {
+      ocrAvisos.push(
+        `El monto leído en el comprobante ($${ocrResultado.monto.toFixed(2)}) no coincide con el total a cobrar ($${total.toFixed(2)}).`
+      );
+    }
+    const bancoDetectado = String(ocrResultado.banco_receptor || ocrResultado.banco_emisor || '').toUpperCase();
+    if (bancoDetectado && !CUENTAS.some(c => bancoDetectado.includes(c.valor.toUpperCase()))) {
+      ocrAvisos.push(
+        `El banco detectado (${ocrResultado.banco_receptor || ocrResultado.banco_emisor}) no coincide con ninguna de nuestras cuentas registradas.`
+      );
+    }
+  }
+
   const confirmar = async () => {
     if (!cliente) { setError('Falta el cliente de la venta.'); return; }
     setCargando(true);
@@ -544,7 +563,6 @@ const Pago: React.FC = () => {
                   className="comprobante-input-file"
                   type="file"
                   accept="image/*"
-                  capture="environment"
                   onChange={elegirComprobante}
                 />
                 {comprobantePreview && (
@@ -581,9 +599,14 @@ const Pago: React.FC = () => {
                     )}
                     {(ocrResultado.validacion?.posible_adulteracion || ocrResultado.validacion?.nivel_sospecha === 'alto') && (
                       <p className="ocr-sospecha">
-                        <IonIcon icon={warningOutline} /> Esta imagen podría no ser válida o no coincide con las cuentas registradas — revísala antes de confirmar.
+                        <IonIcon icon={warningOutline} /> Esta imagen podría no ser válida — revísala antes de confirmar.
                       </p>
                     )}
+                    {ocrAvisos.map((aviso, i) => (
+                      <p key={i} className="ocr-sospecha">
+                        <IonIcon icon={warningOutline} /> {aviso}
+                      </p>
+                    ))}
                     <p className="ocr-hint">Verifica y corrige los campos de arriba si es necesario antes de adjuntar.</p>
                   </div>
                 )}

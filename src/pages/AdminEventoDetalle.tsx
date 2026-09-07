@@ -5,16 +5,19 @@ import {
   IonInput, IonCheckbox, IonAlert, IonActionSheet, IonToast, IonModal,
 } from '@ionic/react';
 import {
-  createOutline, swapHorizontalOutline, addOutline, trashOutline,
+  createOutline, swapHorizontalOutline, trashOutline,
   saveOutline, chevronDownOutline, chevronUpOutline,
-  downloadOutline, listOutline, closeOutline,
+  downloadOutline, listOutline, closeOutline, gridOutline, searchOutline,
+  alertCircleOutline, documentTextOutline,
 } from 'ionicons/icons';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 import {
   listarEventosAdmin, listarLocalidadesAdmin, crearLocalidadAdmin,
   actualizarPrecioLocalidadAdmin, eliminarLocalidadAdmin, actualizarEstadoEvento,
-  obtenerFacturaFinalEvento, ESTADOS_CAMBIABLES,
+  obtenerFacturaFinalEvento, obtenerDiscrepanciasEvento, descargarReporteEventoExcel, ESTADOS_CAMBIABLES,
   type EventoAdmin, type LocalidadAdmin, type FacturaFinalEvento, type FacturaLocalidadItem,
+  type DiscrepanciasEvento, type DiscrepanciaFila,
 } from '../utils/adminEventos';
 import { generarYDescargarFacturaEvento } from '../utils/facturaEventoFinal';
 import './AdminEventoDetalle.css';
@@ -78,6 +81,11 @@ const AdminEventoDetalle: React.FC = () => {
   const [errorResumen, setErrorResumen] = useState('');
   const [descargandoPdf, setDescargandoPdf] = useState(false);
   const [registrosModal, setRegistrosModal] = useState<FacturaLocalidadItem | null>(null);
+
+  const [cargandoDiscrepancias, setCargandoDiscrepancias] = useState(false);
+  const [discrepancias, setDiscrepancias] = useState<DiscrepanciasEvento | null>(null);
+
+  const [descargandoExcel, setDescargandoExcel] = useState(false);
 
   const cargarLocalidades = useCallback(async () => {
     if (!codigoEvento) return;
@@ -240,6 +248,48 @@ const AdminEventoDetalle: React.FC = () => {
     }
   };
 
+  const generarDiscrepancias = async () => {
+    if (!evento) return;
+    setCargandoDiscrepancias(true);
+    setDiscrepancias(null);
+    try {
+      const data = await obtenerDiscrepanciasEvento(evento.codigoEvento);
+      setDiscrepancias(data);
+    } finally {
+      setCargandoDiscrepancias(false);
+    }
+  };
+
+  const filaResumenTexto = (fila: DiscrepanciaFila): string => {
+    const cedula = (fila.cedula as string) ?? '';
+    const partes = Object.entries(fila)
+      .filter(([k]) => k !== 'cedula' && k !== 'motivos')
+      .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`);
+    return [cedula, ...partes].filter(Boolean).join(' · ');
+  };
+
+  const descargarExcel = async () => {
+    if (!evento) return;
+    setDescargandoExcel(true);
+    try {
+      const resultado = await descargarReporteEventoExcel(evento.id);
+      if (!resultado.ok || !resultado.base64) {
+        setToast(resultado.mensaje ?? 'No se pudo descargar el reporte.');
+        return;
+      }
+      await Filesystem.writeFile({
+        path: `reporte_registros_${evento.codigoEvento}.xlsx`,
+        data: resultado.base64,
+        directory: Directory.Documents,
+      });
+      setToast('Reporte guardado en Documentos del teléfono.');
+    } catch {
+      setToast('No se pudo guardar el archivo.');
+    } finally {
+      setDescargandoExcel(false);
+    }
+  };
+
   return (
     <IonPage>
       <IonHeader>
@@ -291,7 +341,14 @@ const AdminEventoDetalle: React.FC = () => {
                   onClick={() => setElegirEstado(true)} disabled={procesando === 'estado'}>
                   <IonIcon icon={swapHorizontalOutline} slot="start" /> Cambiar estado
                 </IonButton>
+                <IonButton fill="outline" size="small" className="btn-admin-accion"
+                  onClick={descargarExcel} disabled={descargandoExcel}>
+                  {descargandoExcel ? <IonSpinner name="crescent" /> : <><IonIcon icon={documentTextOutline} slot="start" /> Registros (Excel)</>}
+                </IonButton>
               </div>
+              <p className="admin-form-hint">
+                El Excel de registros incluye TODAS las compras del sistema, no solo de este evento (limitación del reporte, igual en la web).
+              </p>
             </div>
 
             {/* ── Localidades ── */}
@@ -315,6 +372,14 @@ const AdminEventoDetalle: React.FC = () => {
                       </div>
                       <IonIcon icon={abierto ? chevronUpOutline : chevronDownOutline} />
                     </div>
+
+                    {!!loc.id_localidad && (loc.tipo_localidad === 'fila' || loc.tipo_localidad === 'mesa') && (
+                      <button className="btn-ver-asientos"
+                        onClick={() => navigate(`/admin/evento/${codigoEvento}/localidad/${loc.id_localidad}/asientos`,
+                          { state: { localidadNombre: loc.localidad, tipoLocalidad: loc.tipo_localidad } })}>
+                        <IonIcon icon={gridOutline} /> Ver / editar asientos
+                      </button>
+                    )}
 
                     {abierto && (
                       <div className="localidad-editor">
@@ -369,12 +434,12 @@ const AdminEventoDetalle: React.FC = () => {
                 );
               })}
 
-              {!mostrarNueva && (
+              {/* {!mostrarNueva && (
                 <IonButton expand="block" fill="outline" className="btn-agregar-localidad"
                   onClick={() => setMostrarNueva(true)}>
                   <IonIcon icon={addOutline} slot="start" /> Agregar localidad
                 </IonButton>
-              )}
+              )} */}
 
               {mostrarNueva && (
                 <div className="localidad-editor localidad-nueva">
@@ -402,6 +467,37 @@ const AdminEventoDetalle: React.FC = () => {
                     </IonButton>
                   </div>
                 </div>
+              )}
+            </div>
+
+            {/* ── Discrepancias ── */}
+            <div className="admin-card">
+              <h3 className="admin-card-titulo">
+                <IonIcon icon={alertCircleOutline} /> Discrepancias
+              </h3>
+              <p className="admin-sin-datos">
+                Compara boletos comprados, generados y asientos vinculados para detectar compras con problemas. Solo informa, no corrige nada automáticamente.
+              </p>
+              <IonButton expand="block" fill="outline" className="btn-admin-accion" onClick={generarDiscrepancias} disabled={cargandoDiscrepancias}>
+                {cargandoDiscrepancias ? <IonSpinner name="crescent" /> : <><IonIcon icon={searchOutline} slot="start" /> Analizar discrepancias</>}
+              </IonButton>
+
+              {discrepancias && (
+                <>
+                  {(['discrepancias', 'discrepanciasGeneracion', 'comprasEvento'] as const).map((clave, idx) => {
+                    const titulos = ['Boletos comprados vs. generados', 'Cantidad generada vs. esperada', 'Compras con problemas'];
+                    const filas = discrepancias[clave];
+                    return (
+                      <div key={clave} className="discrepancia-bloque">
+                        <h4 className="resumen-subtitulo">{titulos[idx]} ({filas.length})</h4>
+                        {filas.length === 0 && <p className="admin-sin-datos">Sin discrepancias.</p>}
+                        {filas.map((f, i) => (
+                          <p key={i} className="discrepancia-fila">{filaResumenTexto(f)}</p>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </>
               )}
             </div>
 

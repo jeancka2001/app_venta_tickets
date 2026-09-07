@@ -9,6 +9,7 @@ import {
   linkOutline, personAddOutline, refreshOutline, printOutline, logoWhatsapp,
   chatbubbleEllipsesOutline, documentTextOutline, checkmarkDoneOutline,
   imageOutline, addOutline, searchOutline, mailOutline, closeOutline, saveOutline,
+  sparklesOutline, warningOutline,
 } from 'ionicons/icons';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
@@ -24,6 +25,28 @@ const URL_MIKROTIV2 = 'https://api.t-ickets.com/mikrotiv2';
 const URL_UPLOAD_IMG = 'https://codigomarret.online/upload/api/img';
 const TICKET_PDF_URL = 'https://api.t-ickets.com/ticket/api/v1/ticket_pdf_link';
 const API_HDR = { ...MS_LOGIN_AUTH_HEADERS, 'Content-Type': 'application/json' };
+
+/* Mismo endpoint de OCR que usa Pago.tsx (Google Vision via
+   flasapi_speed_comnet) para leer automáticamente el comprobante que se
+   sube aquí. Se manda la URL ya subida, no el archivo. */
+const URL_OCR_COMPROBANTE = 'https://api.t-ickets.com/mikroti/Boleteria/imagenocr/analizar';
+
+/* Mismas cuentas que Pago.tsx (CUENTAS) -- solo se necesita el nombre del
+   banco aquí, para avisar si el comprobante detectado no corresponde a
+   ninguna de nuestras cuentas registradas. */
+const BANCOS_VALIDOS = ['Pichincha', 'Guayaquil'];
+
+interface OcrExtracto {
+  numero_comprobante?: string;
+  referencia?: string;
+  monto?: number;
+  banco_emisor?: string;
+  banco_receptor?: string;
+  nombre_receptor?: string;
+  fecha?: string;
+  estado?: string;
+  validacion?: { nivel_sospecha?: string; posible_adulteracion?: boolean; razones?: string[] };
+}
 
 interface InfoConcierto {
   nombreConcierto: string;
@@ -113,6 +136,13 @@ const DetalleCompra: React.FC = () => {
   const [duplicados, setDuplicados] = useState<RegistroDuplicado[] | null>(null);
   const [mensajeDuplicado, setMensajeDuplicado] = useState('');
 
+  /* Análisis automático del último comprobante subido (igual que
+     Pago.tsx): autocompleta el número de transacción si aún no se ha
+     escrito uno y permite avisar si el monto/banco no coinciden. */
+  const [analizandoOcr, setAnalizandoOcr] = useState(false);
+  const [ocrResultado, setOcrResultado] = useState<OcrExtracto | null>(null);
+  const [ocrError, setOcrError] = useState('');
+
   const cargar = useCallback(async () => {
     if (!id) return;
     setCargando(true);
@@ -160,6 +190,26 @@ const DetalleCompra: React.FC = () => {
   const esManual = !!registro && METODOS_MANUALES.includes(registro.forma_pago);
   const puedeAprobar = !!registro && esManual && ['Pendiente', 'Comprobar'].includes(registro.estado_pago);
   const linkPago = registro?.link_pago || registro?.link_comprobante || '';
+
+  /* Verificación local del último comprobante leído por OCR contra el
+     total real de esta compra -- el backend solo avisa de posible
+     adulteración de la imagen, no si el monto/banco corresponden a ESTA
+     venta. Tolerancia de 1 centavo por redondeo del OCR. */
+  const ocrAvisos: string[] = [];
+  if (ocrResultado && registro) {
+    const totalPago = parseFloat(registro.total_pago) || 0;
+    if (typeof ocrResultado.monto === 'number' && Math.abs(ocrResultado.monto - totalPago) > 0.01) {
+      ocrAvisos.push(
+        `El monto leído en el comprobante ($${ocrResultado.monto.toFixed(2)}) no coincide con el total de esta compra ($${totalPago.toFixed(2)}).`
+      );
+    }
+    const bancoDetectado = String(ocrResultado.banco_receptor || ocrResultado.banco_emisor || '').toUpperCase();
+    if (bancoDetectado && !BANCOS_VALIDOS.some(b => bancoDetectado.includes(b.toUpperCase()))) {
+      ocrAvisos.push(
+        `El banco detectado (${ocrResultado.banco_receptor || ocrResultado.banco_emisor}) no coincide con ninguna de nuestras cuentas registradas.`
+      );
+    }
+  }
 
   /* ── Anular compra ── */
   const anularCompra = async () => {
@@ -353,6 +403,8 @@ const DetalleCompra: React.FC = () => {
   const agregarComprobanteExtra = async (file: File) => {
     if (!registro) return;
     setProcesando('comprobante-extra');
+    setOcrResultado(null);
+    setOcrError('');
     try {
       const form = new FormData();
       form.append('file', file);
@@ -366,6 +418,9 @@ const DetalleCompra: React.FC = () => {
       if (data?.estado) {
         setComprobantesExtra(prev => [...prev, { id: Date.now(), url_imagen: subida.url, fechaCreacion: new Date().toISOString() }]);
         setToast('Comprobante agregado.');
+        // No se espera a que termine para no bloquear el toast de éxito
+        // de la subida -- el panel de OCR aparece cuando esté listo.
+        analizarComprobante(subida.url);
       } else {
         setToast(data?.mensaje ?? 'No se pudo agregar el comprobante.');
       }
@@ -373,6 +428,38 @@ const DetalleCompra: React.FC = () => {
       setToast('Error de conexión al subir el comprobante.');
     } finally {
       setProcesando(null);
+    }
+  };
+
+  /* Igual que Pago.tsx: lee el comprobante recién subido con OCR (Google
+     Vision vía flasapi_speed_comnet) para autocompletar el número de
+     transacción y poder avisar si el monto/banco no coinciden con esta
+     compra. guardar_bd:false para no duplicar el registro que ya guarda
+     el propio comprobante en /Boleteria/comprobantes de arriba. */
+  const analizarComprobante = async (urlImagen: string) => {
+    setAnalizandoOcr(true);
+    setOcrError('');
+    try {
+      const { data: ocrResp } = await axios.post(URL_OCR_COMPROBANTE,
+        { url_imagen: urlImagen, request_id: String(Date.now()), guardar_bd: false },
+        { headers: { 'Content-Type': 'application/json' } });
+
+      if (!ocrResp?.success && !ocrResp?.estado) {
+        setOcrError('No se pudo analizar la imagen automáticamente. Completa el número de comprobante manualmente.');
+        return;
+      }
+
+      const extraido: OcrExtracto = ocrResp.data ?? {};
+      setOcrResultado(extraido);
+
+      const numero = String(extraido.numero_comprobante || extraido.referencia || '').trim();
+      // Solo autocompleta si el campo está vacío -- no pisa un número que
+      // el operador ya haya escrito o corregido a mano.
+      setNumeroEdit(prev => prev.trim() ? prev : numero);
+    } catch {
+      setOcrError('No se pudo analizar la imagen automáticamente. Completa el número de comprobante manualmente.');
+    } finally {
+      setAnalizandoOcr(false);
     }
   };
 
@@ -557,10 +644,51 @@ const DetalleCompra: React.FC = () => {
                   className="comprobante-input-file"
                   type="file"
                   accept="image/*"
-                  capture="environment"
                   onChange={elegirImagenInput}
                   disabled={procesando === 'comprobante-extra'}
                 />
+
+                {analizandoOcr && (
+                  <div className="ocr-analizando">
+                    <IonSpinner name="crescent" />
+                    <span>Analizando comprobante…</span>
+                  </div>
+                )}
+
+                {!analizandoOcr && ocrError && (
+                  <p className="ocr-error"><IonIcon icon={warningOutline} /> {ocrError}</p>
+                )}
+
+                {!analizandoOcr && ocrResultado && (
+                  <div className="ocr-panel">
+                    <div className="ocr-panel-titulo">
+                      <IonIcon icon={sparklesOutline} /> Datos detectados automáticamente
+                    </div>
+                    {(ocrResultado.numero_comprobante || ocrResultado.referencia) && (
+                      <div className="ocr-dato"><span>N° comprobante</span><span>{ocrResultado.numero_comprobante || ocrResultado.referencia}</span></div>
+                    )}
+                    {typeof ocrResultado.monto === 'number' && (
+                      <div className="ocr-dato"><span>Monto</span><span>${ocrResultado.monto.toFixed(2)}</span></div>
+                    )}
+                    {(ocrResultado.banco_receptor || ocrResultado.banco_emisor) && (
+                      <div className="ocr-dato"><span>Banco</span><span>{ocrResultado.banco_receptor || ocrResultado.banco_emisor}</span></div>
+                    )}
+                    {ocrResultado.fecha && (
+                      <div className="ocr-dato"><span>Fecha</span><span>{ocrResultado.fecha}</span></div>
+                    )}
+                    {(ocrResultado.validacion?.posible_adulteracion || ocrResultado.validacion?.nivel_sospecha === 'alto') && (
+                      <p className="ocr-sospecha">
+                        <IonIcon icon={warningOutline} /> Esta imagen podría no ser válida — revísala antes de aprobar.
+                      </p>
+                    )}
+                    {ocrAvisos.map((aviso, i) => (
+                      <p key={i} className="ocr-sospecha">
+                        <IonIcon icon={warningOutline} /> {aviso}
+                      </p>
+                    ))}
+                    <p className="ocr-hint">El número se autocompletó abajo -- verifícalo antes de guardar.</p>
+                  </div>
+                )}
 
                 <div className="comprobante-numero-campo">
                   <label htmlFor="numeroComprobanteInput">Número de comprobante / transacción</label>

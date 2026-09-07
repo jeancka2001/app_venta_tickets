@@ -1,0 +1,45 @@
+/* Reutiliza el mapa visual de Localidad.css (mismo layout/estructura que
+   ve el vendedor al comprar) -- acá solo se ajusta lo que cambia por ser
+   una herramienta de admin: los asientos reservados/bloqueados SÍ se
+   pueden tocar (para liberarlos), a diferencia del flujo de compra donde
+   quedan bloqueados para el vendedor. Todo escapado bajo .admin-seat-map
+   para no afectar el mapa real de Localidad.tsx (mismas clases, mismo
+   CSS global). */
+
+.btn-refrescar-asientos {
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 1.2rem;
+  padding: 8px;
+  display: flex;
+}
+.btn-refrescar-asientos:disabled { opacity: 0.5; }
+
+.admin-seat-map .sc-res {
+  cursor: pointer;
+  opacity: 1;
+}
+
+.admin-seat-map .sc-bloq {
+  background: #fde3c7;
+  color: #8a4b00;
+  border: 1.5px solid #f0ad4e;
+  cursor: pointer;
+}
+.admin-seat-map .sc-bloq:hover { background: #fbd7a8; }
+
+.admin-seat-map .leg-bloq {
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: #fde3c7;
+  color: #8a4b00;
+  border: 1px solid #f0ad4e;
+}
+
+@media (prefers-color-scheme: dark) {
+  .admin-seat-map .sc-bloq { background: #2a1a00; color: #f0ad4e; border-color: #f0ad4e; }
+  .admin-seat-map .leg-bloq { background: #2a1a00; color: #f0ad4e; border-color: #f0ad4e; }
+}

@@ -86,6 +86,34 @@
 .localidad-nombre { font-size: 0.88rem; font-weight: 700; color: #1a1e52; }
 .localidad-precio { font-size: 0.8rem; font-weight: 700; color: #2d358c; }
 
+.btn-ver-asientos {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  background: #eef0fb;
+  border: none;
+  border-top: 1px solid #eceff6;
+  padding: 8px 12px;
+  color: #2d358c;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-ver-asientos ion-icon { font-size: 0.9rem; }
+
+.discrepancia-bloque { margin-bottom: 8px; }
+.discrepancia-fila {
+  font-size: 0.72rem;
+  color: #6b7a90;
+  background: #f4f6fb;
+  border-radius: 6px;
+  padding: 6px 8px;
+  margin: 0 0 4px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
 .localidad-editor {
   padding: 12px;
   border-top: 1px solid #eceff6;
@@ -287,6 +315,8 @@
   .localidad-item   { border-color: #2a3050; }
   .localidad-nombre { color: #e8ecf5; }
   .localidad-precio { color: #7b8fdc; }
+  .btn-ver-asientos { background: #1e2540; border-top-color: #2a3050; color: #7b8fdc; }
+  .discrepancia-fila { background: #171d30; color: #9da5b4; }
   .localidad-editor { background: #171d30; border-top-color: #2a3050; }
   .localidad-nueva  { border-color: #3a4160; }
   .btn-localidad-eliminar { --border-color: #f87171; --color: #f87171; }

@@ -10,6 +10,7 @@ import DetalleCompra from './pages/DetalleCompra';
 import AdminEventoForm from './pages/AdminEventoForm';
 import AdminEventoDetalle from './pages/AdminEventoDetalle';
 import AdminReportePorUsuario from './pages/AdminReportePorUsuario';
+import AdminLocalidadAsientos from './pages/AdminLocalidadAsientos';
 import { obtenerStaffData } from './utils/staffAuth';
 
 /* Core CSS required for Ionic components to work properly */
@@ -68,6 +69,7 @@ const App: React.FC = () => (
         <Route path="/admin/evento/:codigoEvento/editar" element={<RutaAdmin><AdminEventoForm /></RutaAdmin>} />
         <Route path="/admin/evento/:codigoEvento" element={<RutaAdmin><AdminEventoDetalle /></RutaAdmin>} />
         <Route path="/admin/reporte-usuarios" element={<RutaAdmin><AdminReportePorUsuario /></RutaAdmin>} />
+        <Route path="/admin/evento/:codigoEvento/localidad/:idLocalidad/asientos" element={<RutaAdmin><AdminLocalidadAsientos /></RutaAdmin>} />
         <Route path="/" element={<Navigate to="/home" replace />} />
       </IonRouterOutlet>
     </IonReactRouter>
