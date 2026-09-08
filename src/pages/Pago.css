@@ -124,6 +124,33 @@
 .duna-modo-sel { border-color: #2d358c; background: #eef0fb; color: #2d358c; }
 .duna-modo-hint { font-size: 0.73rem; color: #9da5b4; }
 
+/* ── Boleto físico (escaneo de código de barras) ── */
+.fisico-scan-wrap { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.fisico-scan-input-row { display: flex; gap: 6px; align-items: center; }
+.fisico-scan-input { margin: 0; flex: 1; }
+.btn-escanear-camara {
+  --border-radius: 10px;
+  --border-color: #2d358c;
+  --color: #2d358c;
+  margin: 0;
+  height: 46px;
+  width: 46px;
+}
+.fisico-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.fisico-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: #eef0fb;
+  color: #2d358c;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.fisico-chip ion-icon { font-size: 0.95rem; }
+
 .pago-error {
   font-size: 0.82rem;
   color: #e74c3c;
@@ -357,6 +384,8 @@
   .metodo-lbl    { color: #e8ecf5; }
   .metodo-desc   { color: #9da5b4; }
   .metodo-opciones { border-top-color: #2a3050; color: #e8ecf5; }
+  .fisico-chip     { background: #1e2540; color: #7b8fdc; }
+  .btn-escanear-camara { --border-color: #7b8fdc; --color: #7b8fdc; }
 
   .duna-modo-label { color: #9da5b4; }
   .duna-modo-item  { border-color: #2a3050; color: #9da5b4; }

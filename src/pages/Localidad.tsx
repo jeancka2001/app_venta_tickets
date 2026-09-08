@@ -588,6 +588,10 @@ const Localidad: React.FC = () => {
                 precio,
                 cantidad:        cantCarrito,
                 idSillas:        tipo === 'correlativo' ? [] : sel.map(s => s.idsilla),
+                // Fila/mesa/silla reales de cada asiento elegido en el mapa
+                // -- se usa en Pago.tsx para avisar si el boleto físico
+                // escaneado no coincide con el asiento que se eligió aquí.
+                asientosDetalle: tipo === 'correlativo' ? [] : sel.map(s => ({ idsilla: s.idsilla, fila: s.fila, mesa: s.mesa, silla: s.silla })),
                 comisionBoleto:  parseFloat(st.comisionBoleto || '0'),
                 iva:             st.iva || '1.00',
                 cliente,

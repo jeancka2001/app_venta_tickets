@@ -220,6 +220,25 @@
 }
 .ocr-hint { font-size: 0.72rem; color: #9da5b4; margin: 8px 0 0; }
 
+/* ── Reemplazar por boleto físico ── */
+.fisico-scan-wrap { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 12px; }
+.fisico-scan-input-row { display: flex; gap: 6px; align-items: center; }
+.fisico-scan-input-row .comprobante-input { flex: 1; }
+.fisico-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.fisico-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: #eef0fb;
+  color: #2d358c;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.fisico-chip ion-icon { font-size: 0.95rem; }
+
 .comprobante-numero-campo { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
 .comprobante-numero-campo label { font-size: 0.78rem; font-weight: 700; color: #6b7a90; }
 .comprobante-numero-row { display: flex; gap: 6px; align-items: center; }
@@ -317,6 +336,7 @@
   .ocr-dato span:last-child  { color: #e8ecf5; }
   .ocr-sospecha   { color: #f87171; }
   .ocr-hint       { color: #6b7a90; }
+  .fisico-chip    { background: #1e2540; color: #7b8fdc; }
 
   .comprobante-numero-campo label { color: #9da5b4; }
   .comprobante-numero-input { --color: #e8ecf5; --background: #222840; }

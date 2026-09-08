@@ -1,15 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   IonContent, IonHeader, IonPage, IonTitle, IonToolbar,
-  IonButtons, IonBackButton, IonButton, IonSpinner, IonIcon, IonCheckbox, IonToast,
+  IonButtons, IonBackButton, IonButton, IonSpinner, IonIcon, IonCheckbox, IonToast, IonAlert,
 } from '@ionic/react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   checkmarkCircleOutline, openOutline, copyOutline, logoWhatsapp, qrCodeOutline, linkOutline,
   cameraOutline, cloudUploadOutline, receiptOutline, sparklesOutline, warningOutline,
-  shareSocialOutline,
+  shareSocialOutline, barcodeOutline, closeCircleOutline,
 } from 'ionicons/icons';
 import { Share } from '@capacitor/share';
+import { escanearBoletoFisico } from '../utils/barcodeScanner';
 import axios from 'axios';
 import { MS_LOGIN_AUTH_HEADERS } from '../utils/msLoginAuth';
 import {
@@ -23,6 +24,8 @@ import './Pago.css';
 const API_HDR = { ...MS_LOGIN_AUTH_HEADERS, 'Content-Type': 'application/json' };
 const URL_BASE = 'https://api.t-ickets.com/ms_login/api/v1';
 
+interface AsientoDetalle { idsilla: number; fila?: string; mesa?: string; silla?: string; }
+
 interface PagoState {
   idLocalidad: string;
   codigoEvento: string;
@@ -32,6 +35,7 @@ interface PagoState {
   precio: number;
   cantidad: number;
   idSillas: number[];
+  asientosDetalle?: AsientoDetalle[];
   comisionBoleto: number;
   iva: string;
   cliente: Cliente | null;
@@ -99,6 +103,20 @@ const Pago: React.FC = () => {
      dispositivo, así que lo natural es mostrarle el QR al cliente. */
   const [dunaModo, setDunaModo] = useState<'qr' | 'link'>('qr');
   const [toast, setToast] = useState('');
+
+  /* Boleto físico (impreso de antemano) para métodos locales: 'digital' =
+     flujo de siempre. 'fisico' = se escanea/teclea el código de barras de
+     cada boleto impreso, se busca contra el inventario subido desde
+     Admin > Evento (mismo /api/v1/boletos_fisicos que en la web) solo
+     para MOSTRAR qué sección/fila-asiento trae -- no se exige que
+     coincida con la localidad elegida. Los códigos viajan igual que en
+     la web dentro de "codigo_boletos" del propio registraCompra. */
+  const [tipoBoleto, setTipoBoleto] = useState<'digital' | 'fisico'>('digital');
+  const [codigoFisicoInput, setCodigoFisicoInput] = useState('');
+  const [codigosFisicos, setCodigosFisicos] = useState<string[]>([]);
+  const [seccionPorCodigo, setSeccionPorCodigo] = useState<Record<string, string>>({});
+  const [buscandoCodigo, setBuscandoCodigo] = useState(false);
+  const inputFisicoRef = useRef<HTMLInputElement>(null);
 
   /* Transferencia/Depósito: igual que Modalconfirmacion.js en la web, tras
      crear la orden (queda "Pendiente") se pide el comprobante -- banco,
@@ -179,6 +197,222 @@ const Pago: React.FC = () => {
     }
   }
 
+  // Disponible para cualquier método, no solo los locales.
+  const esFisico = tipoBoleto === 'fisico';
+
+  // Cuántos boletos físicos caben en esta venta -- uno por asiento elegido
+  // en el mapa, o la cantidad comprada si es una localidad sin asientos
+  // numerados (correlativo, sin mapa). No se pueden escanear más que esto.
+  const cantidadFisicaMax = st.idSillas?.length || cantidadNum;
+
+  const normalizarTexto = (s?: string) => String(s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .trim();
+
+  /* Palabras de relleno que trae el texto libre del boleto impreso y que
+     no aportan a la comparación ("Fila A, Asiento 1" -> nos interesan
+     "a" y "1", no "fila"/"asiento"). No se listan letras sueltas: una
+     fila puede llamarse "S" o "N". */
+  const RELLENO_ASIENTO = new Set([
+    'fila', 'filas', 'asiento', 'asientos', 'silla', 'sillas', 'mesa', 'mesas',
+    'butaca', 'butacas', 'puesto', 'puestos', 'seat', 'row', 'numero', 'nro', 'num',
+  ]);
+
+  /* Tokens alfabéticos / numéricos sueltos del texto, sin relleno.
+     "Fila A, Asiento 1" -> ["a","1"]; "A-s-1" -> ["a","1"];
+     "Mesa 5 / Silla 3" -> ["5","3"]. */
+  const tokensAsiento = (s?: string) =>
+    (normalizarTexto(s).match(/[a-z]+|\d+/g) || []).filter(t => !RELLENO_ASIENTO.has(t));
+
+  /* Número de asiento dentro de la etiqueta digital "<fila|mesa>-s-<n>"
+     (formato del mapa, ver silla en la BD) o de un correlativo suelto. */
+  const numeroDeSilla = (silla?: string): string => {
+    const s = normalizarTexto(silla).replace(/\s+/g, '');
+    if (s.includes('-s-')) return s.split('-s-').pop() || '';
+    const m = s.match(/(\d+)$/);
+    return m ? m[1] : '';
+  };
+
+  const mismoNumero = (a: string, b: string) =>
+    a !== '' && b !== '' && /^\d+$/.test(a) && /^\d+$/.test(b) && parseInt(a, 10) === parseInt(b, 10);
+
+  /* Compara lo que trae el boleto impreso (fila_asiento, texto libre del
+     Excel) contra el asiento que se eligió en el mapa. Solo se miran la
+     fila/mesa y el NÚMERO de asiento -- NO el nombre de la localidad ni
+     el formato exacto de la etiqueta: la BD guarda "A-s-1" y el impreso
+     dice "Fila A Asiento 1", así que un includes() directo nunca casa.
+     Si no hay dato de asiento (correlativo) no hay nada que comparar. */
+  const coincideConAsientoElegido = (filaAsiento: string, asiento?: AsientoDetalle): boolean => {
+    if (!asiento) return true;
+    const grupo = normalizarTexto(asiento.mesa || asiento.fila || (asiento.silla || '').split('-s-')[0]);
+    const numero = numeroDeSilla(asiento.silla);
+    if (!grupo && !numero) return true;
+
+    const toks = tokensAsiento(filaAsiento);
+    if (!toks.length) return false;
+
+    const numeroOk = !numero || toks.some(t => mismoNumero(t, numero));
+    const grupoOk = !grupo
+      || toks.some(t => t === grupo || mismoNumero(t, grupo))
+      // fila con letra que el impreso ni siquiera trae: no se puede
+      // verificar, no vale la pena frenar al operador por eso.
+      || (/^[a-z]+$/.test(grupo) && !toks.some(t => /^[a-z]+$/.test(t)));
+    return numeroOk && grupoOk;
+  };
+
+  /* Boleto encontrado pero que NO coincide con el asiento elegido en el
+     mapa -- se pide confirmación explícita antes de agregarlo. */
+  const [alertaAsiento, setAlertaAsiento] = useState<{ codigo: string; seccion: string; filaAsiento: string } | null>(null);
+
+  /* Busca un código en el inventario de boletos físicos de este evento
+     (subido desde Admin > Evento en la web). Si matchea una sola sección
+     Y coincide con el asiento que le corresponde según el orden en que
+     se escaneó, se recuerda para descontarla del inventario y reemplazar
+     el QR de ese asiento al confirmar. Si NO coincide, se pide
+     confirmación antes de agregarlo (alertaAsiento). */
+  const buscarBoletoFisico = async (codigo: string, indiceAsiento: number) => {
+    if (!st.codigoEvento) return;
+    setBuscandoCodigo(true);
+    try {
+      const { data } = await axios.get(`${URL_BASE}/boletos_fisicos/buscar`, {
+        headers: API_HDR,
+        params: { codigoEvento: st.codigoEvento, codigo_barras: codigo },
+      });
+      if (data?.success && Array.isArray(data.data) && data.data.length === 1) {
+        const f = data.data[0];
+        const asiento = st.asientosDetalle?.[indiceAsiento];
+        if (asiento && !coincideConAsientoElegido(f.fila_asiento, asiento)) {
+          setAlertaAsiento({ codigo, seccion: f.seccion, filaAsiento: f.fila_asiento || '' });
+          return;
+        }
+        setSeccionPorCodigo(prev => ({ ...prev, [codigo]: f.seccion }));
+        setToast(`Boleto encontrado: ${f.seccion}${f.fila_asiento ? ' · ' + f.fila_asiento : ''}`);
+      } else if (data?.success && Array.isArray(data.data) && data.data.length > 1) {
+        setToast(`Ese código existe en ${data.data.length} secciones -- se agrega igual, sin descontar del inventario.`);
+      } else {
+        setToast('No se encontró ese código en el inventario -- se agrega igual.');
+      }
+    } catch {
+      // Silencioso: el código igual queda agregado a la venta.
+    } finally {
+      setBuscandoCodigo(false);
+    }
+  };
+
+  const agregarCodigoFisico = (codigoDirecto?: string) => {
+    const codigo = (codigoDirecto ?? codigoFisicoInput).trim();
+    if (!codigo) return;
+    setCodigoFisicoInput('');
+    if (codigosFisicos.includes(codigo)) return;
+    if (codigosFisicos.length >= cantidadFisicaMax) {
+      setToast(`Ya escaneaste los ${cantidadFisicaMax} boleto${cantidadFisicaMax > 1 ? 's' : ''} de esta venta.`);
+      return;
+    }
+    const indice = codigosFisicos.length;
+    setCodigosFisicos(prev => [...prev, codigo]);
+    buscarBoletoFisico(codigo, indice);
+  };
+
+  /* Auto-envío al dejar de escribir: los lectores de código de barras
+     "escriben" el código carácter por carácter y casi siempre mandan
+     Enter al terminar (eso ya lo cubre el onKeyDown del input, dispara
+     al toque). Este temporizador es el respaldo para lectores que NO
+     mandan Enter: si no entra ningún carácter nuevo en 600ms, se agrega
+     solo. No molesta al tecleo manual -- una pausa de más de medio
+     segundo entre letras al escribir a mano es rara. */
+  useEffect(() => {
+    if (tipoBoleto !== 'fisico' || !codigoFisicoInput.trim()) return;
+    const temporizador = setTimeout(() => agregarCodigoFisico(), 600);
+    return () => clearTimeout(temporizador);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [codigoFisicoInput, tipoBoleto]);
+
+  /* Autoenfoca el campo apenas se elige "Físico", para poder escanear de
+     inmediato sin tener que tocar el input primero. */
+  useEffect(() => {
+    if (tipoBoleto !== 'fisico') return;
+    const t = setTimeout(() => inputFisicoRef.current?.focus(), 50);
+    return () => clearTimeout(t);
+  }, [tipoBoleto]);
+
+  /* Escaneo con la cámara del celular (@capacitor-mlkit/barcode-scanning) --
+     complementa al lector de código de barras por teclado y al tecleo
+     manual, que ya funcionan sin esto. */
+  const escanearConCamara = async () => {
+    const resultado = await escanearBoletoFisico();
+    if (resultado.ok && resultado.codigo) {
+      agregarCodigoFisico(resultado.codigo);
+    } else if (resultado.mensaje) {
+      setToast(resultado.mensaje);
+    }
+  };
+
+  const quitarCodigoFisico = (codigo: string) => {
+    setCodigosFisicos(prev => prev.filter(c => c !== codigo));
+    setSeccionPorCodigo(prev => {
+      const next = { ...prev };
+      delete next[codigo];
+      return next;
+    });
+  };
+
+  /* Marca en el inventario los códigos que matchearon una sola sección y
+     canjea la compra completa (el boleto impreso ya es la prueba de
+     entrada). Best-effort tras registrar la venta: si algo falla aquí no
+     se revierte la venta ya hecha. */
+  /* omitirCanje: la transferencia queda "Pendiente" hasta que se apruebe
+     el depósito -- el boleto físico igual se reserva/asigna en el
+     inventario (para que nadie más lo venda), pero el canje (marcar la
+     entrada como usada) se deja para cuando se apruebe el pago, no antes. */
+  /* Para localidades correlativas (sin mapa de asientos) st.idSillas viene
+     vacío -- el backend recién resuelve qué localidades_items.id se usaron
+     DESPUÉS de crear la compra (los guarda en
+     registraCompra.info_concierto[].id_sillas, ver VincularReservasACompra
+     en RegistraCompra.controller.js). Se hace un fetch de vuelta para
+     poder reemplazar el QR igual que en localidades con mapa de asientos. */
+  const obtenerAsientosCorrelativo = async (idRegistraCompra: number): Promise<number[]> => {
+    try {
+      const { data } = await axios.post(`${URL_BASE}/listarRegistros`, {}, {
+        headers: API_HDR, params: { id_registro: idRegistraCompra },
+      });
+      const fila = Array.isArray(data?.data) ? data.data[0] : null;
+      const idSillas = fila?.info_concierto?.[0]?.id_sillas;
+      return Array.isArray(idSillas) ? idSillas.map(Number).filter((n) => n > 0) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const asignarBoletosFisicosYCanjear = async (idRegistraCompra: number, omitirCanje = false) => {
+    const idOperador = staff?.id || 0;
+    // Empareja cada código con el asiento reservado en el MISMO orden en
+    // que se escanearon (1ro con 1ro, 2do con 2do...). Para correlativo
+    // (sin mapa de asientos elegido a mano) se resuelven los asientos que
+    // el backend acaba de asignar recién ahora, ya con la compra creada.
+    const asientos = st.idSillas?.length ? st.idSillas : await obtenerAsientosCorrelativo(idRegistraCompra);
+    for (let i = 0; i < codigosFisicos.length; i++) {
+      const codigo = codigosFisicos[i];
+      const seccion = seccionPorCodigo[codigo];
+      if (!seccion) continue; // sin sección resuelta, no hay a qué inventario asignarlo
+      const idAsiento = asientos[i];
+      try {
+        await axios.post(`${URL_BASE}/boletos_fisicos/asignar`, {
+          codigoEvento: st.codigoEvento, seccion, codigo_barras: codigo,
+          id_registraCompra: idRegistraCompra, id_operador: idOperador,
+          ...(idAsiento ? { id_localidades_items: idAsiento } : {}),
+        }, { headers: API_HDR });
+      } catch { /* best-effort */ }
+    }
+    if (omitirCanje) return;
+    try {
+      await axios.post(`${URL_BASE}/canje_boleto`, {
+        id_registraCompra: idRegistraCompra, canjeado: 'CANJEADO', id_operador: idOperador, id_usuario: cliente?.id || 0,
+      }, { headers: API_HDR });
+    } catch { /* best-effort */ }
+  };
+
   const confirmar = async () => {
     if (!cliente) { setError('Falta el cliente de la venta.'); return; }
     setCargando(true);
@@ -215,13 +449,26 @@ const Pago: React.FC = () => {
           iva:               ivaImporte.toFixed(2),
         },
         transaccion: '',
-        ...(esLocal ? { canjear: false, enviar_correo: enviarCorreo } : {}),
+        // "codigo_boletos" ya es una columna existente de registraCompra --
+        // misma que llena ModalEfectivo.js en la web con su campo "Agregar
+        // Boletos". Va siempre (vacío para digital, sin efecto).
+        codigo_boletos: codigosFisicos,
+        // Solo se canjea de una en métodos locales (el dinero ya está en
+        // mano al registrar la compra). En gateway/Duna/transferencia el
+        // pago todavía no está confirmado en este punto -- el boleto
+        // físico igual queda reservado/asignado en el inventario, pero el
+        // canje se deja para cuando el pago se confirme (misma lógica que
+        // ya existía: "canjear" nunca se manda salvo esLocal).
+        ...(esLocal ? { canjear: esFisico, enviar_correo: enviarCorreo } : {}),
       };
 
       const { data } = await axios.post(`${URL_BASE}/registraCompra`, payload, { headers: API_HDR });
 
       if (data.success || data.idRegistro) {
         if (data.url) setUrlPago(data.url);
+        if (esFisico && data.idRegistro) {
+          await asignarBoletosFisicosYCanjear(data.idRegistro, !esLocal);
+        }
         if (esTransferencia && data.idRegistro) {
           // La orden queda "Pendiente" en el backend -- se pide el
           // comprobante antes de dar la venta por terminada.
@@ -438,14 +685,23 @@ const Pago: React.FC = () => {
           <div className="pago-exito">
             <IonIcon icon={checkmarkCircleOutline} className="pago-exito-icon" />
             <h2>¡Venta registrada!</h2>
-            {esLocal && (
+            {esLocal && !esFisico && (
               <p>La entrada quedó pagada. {enviarCorreo ? 'Se envió al correo del cliente.' : ''}</p>
+            )}
+            {esFisico && esLocal && (
+              <p>Entrada(s) física(s) registrada(s) y canjeada(s). {enviarCorreo ? 'También se envió al correo del cliente.' : ''}</p>
+            )}
+            {esFisico && !esLocal && !esTransferencia && (
+              <p>Boleto(s) físico(s) registrado(s) y reservado(s). Se canjeará(n) al confirmarse el pago.</p>
             )}
             {met.categoria === 'gateway' && !esQrDuna && (
               <p>Comparte el link de pago con el cliente para que complete el pago con tarjeta.</p>
             )}
             {esQrDuna && (
               <p>Pide al cliente que escanee este código QR con la app de Deuna o de su banco para completar el pago.</p>
+            )}
+            {esTransferencia && esFisico && (
+              <p>Boleto(s) físico(s) reservado(s) -- se canjeará(n) recién cuando se apruebe el depósito.</p>
             )}
             {esTransferencia && comprobanteAdjuntado && (
               <p>El comprobante quedó adjunto y la venta pendiente de aprobación manual.</p>
@@ -671,6 +927,71 @@ const Pago: React.FC = () => {
                 </div>
               )}
 
+              {/* Tipo de boleto: disponible para CUALQUIER método de pago, no
+                  solo los locales -- un cliente puede pagar por link/Duna/
+                  transferencia y aun así recibir el boleto impreso en vez
+                  del digital. */}
+              <div className="metodo-opciones duna-modo-opciones">
+                <span className="duna-modo-label">Tipo de boleto</span>
+                <div className="duna-modo-row">
+                  <div className={`duna-modo-item ${tipoBoleto === 'digital' ? 'duna-modo-sel' : ''}`}
+                    onClick={() => setTipoBoleto('digital')}>
+                    <IonIcon icon={qrCodeOutline} />
+                    <span>Digital</span>
+                  </div>
+                  <div className={`duna-modo-item ${tipoBoleto === 'fisico' ? 'duna-modo-sel' : ''}`}
+                    onClick={() => setTipoBoleto('fisico')}>
+                    <IonIcon icon={barcodeOutline} />
+                    <span>Físico</span>
+                  </div>
+                </div>
+
+                {tipoBoleto === 'fisico' && (
+                  <div className="fisico-scan-wrap">
+                    <span className="duna-modo-hint">
+                      <strong>{codigosFisicos.length} de {cantidadFisicaMax}</strong> boleto{cantidadFisicaMax > 1 ? 's' : ''} escaneado{cantidadFisicaMax > 1 ? 's' : ''}.{' '}
+                      Escanea el código con el lector (o cámara) o tecléalo y presiona Enter.
+                      {buscandoCodigo ? ' Buscando…' : ''}
+                    </span>
+                    <div className="fisico-scan-input-row">
+                      <input
+                        ref={inputFisicoRef}
+                        className="comprobante-input fisico-scan-input"
+                        type="text"
+                        inputMode="text"
+                        placeholder="Código de barras del boleto físico"
+                        value={codigoFisicoInput}
+                        disabled={codigosFisicos.length >= cantidadFisicaMax}
+                        onChange={(e) => setCodigoFisicoInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); agregarCodigoFisico(); } }}
+                      />
+                      <IonButton fill="outline" className="btn-escanear-camara" onClick={escanearConCamara}
+                        disabled={codigosFisicos.length >= cantidadFisicaMax}>
+                        <IonIcon icon={cameraOutline} />
+                      </IonButton>
+                    </div>
+                    {codigosFisicos.length > 0 && (
+                      <div className="fisico-chips">
+                        {codigosFisicos.map((c) => (
+                          <span key={c} className="fisico-chip" onClick={() => quitarCodigoFisico(c)}>
+                            {c}{seccionPorCodigo[c] ? ` · ${seccionPorCodigo[c]}` : ''}
+                            <IonIcon icon={closeCircleOutline} />
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {esLocal ? (
+                      <p className="ocr-hint">Se canjeará automáticamente al confirmar la venta.</p>
+                    ) : (
+                      <p className="ocr-hint">El pago aún no está confirmado -- se canjeará recién cuando se confirme.</p>
+                    )}
+                    {!st.idSillas?.length && (
+                      <p className="ocr-hint">Localidad sin asientos numerados: los boletos se van asignando en el orden en que se compran.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {esLocal && (
                 <div className="metodo-opciones">
                   <IonCheckbox checked={enviarCorreo} onIonChange={(e) => setEnviarCorreo(e.detail.checked)}>
@@ -752,6 +1073,34 @@ const Pago: React.FC = () => {
           duration={3000}
           position="top"
           onDidDismiss={() => setToast('')}
+        />
+
+        <IonAlert
+          isOpen={!!alertaAsiento}
+          header="El boleto no coincide con el asiento elegido"
+          message={alertaAsiento
+            ? `Este boleto es de ${alertaAsiento.seccion}${alertaAsiento.filaAsiento ? ' · ' + alertaAsiento.filaAsiento : ''}, pero no coincide con el asiento elegido en el mapa. ¿Continuar de todas formas?`
+            : ''}
+          buttons={[
+            {
+              text: 'Salir',
+              role: 'cancel',
+              handler: () => {
+                if (alertaAsiento) quitarCodigoFisico(alertaAsiento.codigo);
+                setAlertaAsiento(null);
+              },
+            },
+            {
+              text: 'Está bien',
+              handler: () => {
+                if (alertaAsiento) {
+                  setSeccionPorCodigo(prev => ({ ...prev, [alertaAsiento.codigo]: alertaAsiento.seccion }));
+                  setToast('Boleto agregado igual -- revisa que sea el correcto.');
+                }
+                setAlertaAsiento(null);
+              },
+            },
+          ]}
         />
 
       </IonContent>
