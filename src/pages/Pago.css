@@ -59,6 +59,20 @@
 
 .pago-divider { height: 1px; background: #e0e5f0; margin: 8px 0; }
 
+.pago-desc-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  font-size: 0.85rem;
+  color: #1a1e52;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f2f8;
+}
+.pago-desc-opt:last-child { border-bottom: none; }
+.pago-desc-opt input { flex-shrink: 0; }
+.pago-desc-opt strong { color: #2d358c; }
+
 .pago-total-row {
   font-size: 1rem;
   font-weight: 800;
@@ -370,6 +384,8 @@
   .pago-content       { --background: #101624; }
   .pago-card          { background: #1a2035; box-shadow: 0 3px 12px rgba(0,0,0,.4); }
   .pago-card-title    { color: #6b7a90; }
+  .pago-desc-opt      { color: #e8ecf5; border-bottom-color: #2a3050; }
+  .pago-desc-opt strong { color: #7b8fdc; }
   .pago-evento-nombre { color: #e8ecf5; }
   .pago-fila          { border-bottom-color: #2a3050; }
   .pago-lbl           { color: #9da5b4; }

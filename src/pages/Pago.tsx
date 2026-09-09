@@ -18,6 +18,7 @@ import {
   type CategoriaMetodo,
 } from '../utils/metodosPago';
 import { obtenerStaffData } from '../utils/staffAuth';
+import { obtenerDescuentosVendedor, aplicarDescuento, type DescuentoVendedor } from '../utils/descuentos';
 import type { Cliente } from './VentaEvento';
 import './Pago.css';
 
@@ -104,6 +105,12 @@ const Pago: React.FC = () => {
   const [dunaModo, setDunaModo] = useState<'qr' | 'link'>('qr');
   const [toast, setToast] = useState('');
 
+  /* Descuentos (%) que este vendedor puede aplicar a esta venta (uno solo
+     por venta). El backend revalida y recalcula el total al registrar la
+     compra -- aquí solo se muestra el neto y se manda `descuento:{id}`. */
+  const [descuentos, setDescuentos] = useState<DescuentoVendedor[]>([]);
+  const [descuentoSel, setDescuentoSel] = useState<number | null>(null);
+
   /* Boleto físico (impreso de antemano) para métodos locales: 'digital' =
      flujo de siempre. 'fisico' = se escanea/teclea el código de barras de
      cada boleto impreso, se busca contra el inventario subido desde
@@ -163,6 +170,18 @@ const Pago: React.FC = () => {
     return () => { cancelado = true; };
   }, [st.codigoEvento]);
 
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      const lista = await obtenerDescuentosVendedor(st.codigoEvento, staff?.id as number | undefined);
+      if (cancelado) return;
+      setDescuentos(lista);
+      // Si el descuento elegido ya no está disponible, se limpia.
+      setDescuentoSel(prev => (prev && lista.some(d => d.id === prev) ? prev : null));
+    })();
+    return () => { cancelado = true; };
+  }, [st.codigoEvento, staff?.id]);
+
   const met = metodosDisponibles?.find(x => x.key === metodo)
     ?? { key: '', label: '', pct: 0, desc: '', categoria: 'local' as CategoriaMetodo };
   const esLocal = met.categoria === 'local';
@@ -178,15 +197,23 @@ const Pago: React.FC = () => {
   const { subtotal, comisionServicio, ivaImporte, comisionBancaria, total } =
     calcularTotalConComision(precioNum, cantidadNum, comBoleto, ivaRate, met.pct);
 
+  /* `total` es el bruto (lo que va en valores.total; el backend le aplica
+     el % del descuento). `totalACobrar` es lo que realmente paga el
+     cliente -- se usa para mostrar y para el chequeo del OCR. */
+  const descuentoActivo = descuentos.find(d => d.id === descuentoSel) ?? null;
+  const { neto: totalACobrar, monto: montoDescuento } = descuentoActivo
+    ? aplicarDescuento(total, descuentoActivo.porcentaje)
+    : { neto: total, monto: 0 };
+
   /* Verificación local del comprobante leído por OCR contra lo que
      debería depositarse: el backend solo avisa de posible adulteración
      de la imagen, no si el monto/banco coinciden con ESTA venta -- eso
      solo lo sabe el frontend. Tolerancia de 1 centavo por redondeo. */
   const ocrAvisos: string[] = [];
   if (ocrResultado) {
-    if (typeof ocrResultado.monto === 'number' && Math.abs(ocrResultado.monto - total) > 0.01) {
+    if (typeof ocrResultado.monto === 'number' && Math.abs(ocrResultado.monto - totalACobrar) > 0.01) {
       ocrAvisos.push(
-        `El monto leído en el comprobante ($${ocrResultado.monto.toFixed(2)}) no coincide con el total a cobrar ($${total.toFixed(2)}).`
+        `El monto leído en el comprobante ($${ocrResultado.monto.toFixed(2)}) no coincide con el total a cobrar ($${totalACobrar.toFixed(2)}).`
       );
     }
     const bancoDetectado = String(ocrResultado.banco_receptor || ocrResultado.banco_emisor || '').toUpperCase();
@@ -441,6 +468,7 @@ const Pago: React.FC = () => {
           id_sillas:           st.idSillas        || [],
         }],
         valores: {
+          // total = bruto (sin descuento); el backend aplica el % y guarda el neto.
           total:             total.toFixed(2),
           comision:          comisionServicio.toFixed(2),
           subtotal:          subtotal.toFixed(2),
@@ -448,6 +476,9 @@ const Pago: React.FC = () => {
           description:       st.localidadNombre || '',
           iva:               ivaImporte.toFixed(2),
         },
+        // Descuento marcado por el vendedor (uno por venta). El backend
+        // revalida (autorización + evento) y recalcula total_pago.
+        ...(descuentoSel ? { descuento: { id: descuentoSel } } : {}),
         transaccion: '',
         // "codigo_boletos" ya es una columna existente de registraCompra --
         // misma que llena ModalEfectivo.js en la web con su campo "Agregar
@@ -1024,6 +1055,32 @@ const Pago: React.FC = () => {
               )}
             </div>
 
+            {descuentos.length > 0 && (
+              <div className="pago-card">
+                <h3 className="pago-card-title">Descuento</h3>
+                <label className="pago-desc-opt">
+                  <input
+                    type="radio"
+                    name="descuento"
+                    checked={descuentoSel === null}
+                    onChange={() => setDescuentoSel(null)}
+                  />
+                  <span>Sin descuento</span>
+                </label>
+                {descuentos.map(d => (
+                  <label key={d.id} className="pago-desc-opt">
+                    <input
+                      type="radio"
+                      name="descuento"
+                      checked={descuentoSel === d.id}
+                      onChange={() => setDescuentoSel(d.id)}
+                    />
+                    <span>{d.nombre} <strong>−{d.porcentaje}%</strong></span>
+                  </label>
+                ))}
+              </div>
+            )}
+
             <div className="pago-card">
               <h3 className="pago-card-title">Detalle de precios</h3>
               <div className="pago-fila">
@@ -1048,10 +1105,16 @@ const Pago: React.FC = () => {
                   <span className="pago-val">${comisionBancaria.toFixed(2)}</span>
                 </div>
               )}
+              {descuentoActivo && (
+                <div className="pago-fila">
+                  <span className="pago-lbl">Descuento ({descuentoActivo.nombre} −{descuentoActivo.porcentaje}%)</span>
+                  <span className="pago-val">−${montoDescuento.toFixed(2)}</span>
+                </div>
+              )}
               <div className="pago-divider" />
               <div className="pago-fila pago-total-row">
                 <span>TOTAL A COBRAR</span>
-                <span>${total.toFixed(2)}</span>
+                <span>${totalACobrar.toFixed(2)}</span>
               </div>
             </div>
 
@@ -1061,7 +1124,7 @@ const Pago: React.FC = () => {
               onClick={confirmar} disabled={cargando || !metodo}>
               {cargando
                 ? <><IonSpinner name="crescent" className="btn-spinner" /> Registrando…</>
-                : `Registrar venta  $${total.toFixed(2)}`
+                : `Registrar venta  $${totalACobrar.toFixed(2)}`
               }
             </IonButton>
           </div>

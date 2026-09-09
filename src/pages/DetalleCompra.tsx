@@ -78,6 +78,9 @@ interface Registro {
   info_concierto: InfoConcierto[];
   estado_pago: string;
   fechaCreacion: string;
+  descuento_nombre?: string | null;
+  descuento_pct?: string | number | null;
+  descuento_monto?: string | number | null;
   ticket_usuarios?: TicketUsuario[];
   comentarios?: Comentario[];
   link_pago?: string | null;
@@ -780,6 +783,15 @@ const DetalleCompra: React.FC = () => {
                   <IonBadge className={`badge-estado ${registro.estado_envio ? 'estado-pagado' : 'estado-pendiente'}`}>
                     {registro.estado_envio ? 'Enviado' : 'No enviado'}
                   </IonBadge>
+                </div>
+              )}
+              {registro.descuento_monto != null && parseFloat(String(registro.descuento_monto)) > 0 && (
+                <div className="detalle-fila">
+                  <span className="detalle-lbl">
+                    Descuento{registro.descuento_nombre ? ` (${registro.descuento_nombre})` : ''}
+                    {registro.descuento_pct ? ` −${parseFloat(String(registro.descuento_pct))}%` : ''}
+                  </span>
+                  <span className="detalle-val">−${parseFloat(String(registro.descuento_monto)).toFixed(2)}</span>
                 </div>
               )}
               <div className="detalle-fila detalle-total-fila">
