@@ -2,12 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import {
   IonContent, IonHeader, IonPage, IonTitle, IonToolbar,
   IonButtons, IonBackButton, IonButton, IonSpinner, IonIcon, IonCheckbox, IonToast, IonAlert,
+  IonModal, useIonViewWillEnter, useIonViewWillLeave,
 } from '@ionic/react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   checkmarkCircleOutline, openOutline, copyOutline, logoWhatsapp, qrCodeOutline, linkOutline,
   cameraOutline, cloudUploadOutline, receiptOutline, sparklesOutline, warningOutline,
-  shareSocialOutline, barcodeOutline, closeCircleOutline,
+  shareSocialOutline, barcodeOutline, closeCircleOutline, closeOutline,
 } from 'ionicons/icons';
 import { Share } from '@capacitor/share';
 import { escanearBoletoFisico } from '../utils/barcodeScanner';
@@ -25,8 +26,6 @@ import './Pago.css';
 const API_HDR = { ...MS_LOGIN_AUTH_HEADERS, 'Content-Type': 'application/json' };
 const URL_BASE = 'https://api.t-ickets.com/ms_login/api/v1';
 
-interface AsientoDetalle { idsilla: number; fila?: string; mesa?: string; silla?: string; }
-
 interface PagoState {
   idLocalidad: string;
   codigoEvento: string;
@@ -36,7 +35,6 @@ interface PagoState {
   precio: number;
   cantidad: number;
   idSillas: number[];
-  asientosDetalle?: AsientoDetalle[];
   comisionBoleto: number;
   iva: string;
   cliente: Cliente | null;
@@ -88,6 +86,19 @@ const Pago: React.FC = () => {
   const [error, setError]       = useState('');
   const [urlPago, setUrlPago]   = useState('');
   const [fase, setFase]         = useState<Fase>('seleccion');
+  const faseRef = useRef<Fase>('seleccion');
+  useEffect(() => { faseRef.current = fase; }, [fase]);
+
+  /* Resumen de confirmación antes de disparar el cobro real -- "Registrar
+     venta" abre este modal en vez de llamar a confirmar() directamente. */
+  const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false);
+
+  /* Si esta pagina NO es la vista activa (Ionic puede dejarla montada
+     fuera de pantalla en su stack), el listener global de ionBackButton
+     de mas abajo no debe actuar -- evita que el botón atrás de OTRA
+     pantalla quede secuestrado por esta. */
+  const activoRef = useRef(false);
+  useIonViewWillLeave(() => { activoRef.current = false; });
 
   /* Solo aplica a métodos locales (Efectivo-Local/Tarjeta-Local/etc.) —
      mismo checkbox que ModalEfectivo.js en la web, pero "canjear" queda
@@ -118,10 +129,13 @@ const Pago: React.FC = () => {
      para MOSTRAR qué sección/fila-asiento trae -- no se exige que
      coincida con la localidad elegida. Los códigos viajan igual que en
      la web dentro de "codigo_boletos" del propio registraCompra. */
-  const [tipoBoleto, setTipoBoleto] = useState<'digital' | 'fisico'>('digital');
+  const [tipoBoleto, setTipoBoleto] = useState<'digital' | 'fisico'>('fisico');
   const [codigoFisicoInput, setCodigoFisicoInput] = useState('');
   const [codigosFisicos, setCodigosFisicos] = useState<string[]>([]);
   const [seccionPorCodigo, setSeccionPorCodigo] = useState<Record<string, string>>({});
+  // Fila/asiento (texto libre del inventario) de cada código escaneado --
+  // solo para MOSTRAR qué número de boleto es, no se compara contra nada.
+  const [filaAsientoPorCodigo, setFilaAsientoPorCodigo] = useState<Record<string, string>>({});
   const [buscandoCodigo, setBuscandoCodigo] = useState(false);
   const inputFisicoRef = useRef<HTMLInputElement>(null);
 
@@ -189,6 +203,14 @@ const Pago: React.FC = () => {
   const esDuna = met.key === 'Duna';
   const esQrDuna = esDuna && dunaModo === 'qr';
 
+  /* Métodos que el backend deja "Pagado" en el mismo POST de
+     /registraCompra (dinero ya en mano del vendedor) -- ahí no hay nada
+     que anular al retroceder. "Efectivo" (Speed/Comnet) queda AFUERA a
+     propósito: aunque su categoría es "local", el backend lo deja
+     "Pendiente" (genera una factura Comnet aparte, no confirma el pago
+     al momento -- ver PagoEfectivo en functionPagos.js). */
+  const quedaPagadoAlInstante = ['Efectivo-Local', 'Tarjeta-Local', 'Efectivo-QR'].includes(met.key);
+
   const precioNum   = Number(st.precio        || 0);
   const cantidadNum = Number(st.cantidad      || 1);
   const comBoleto   = Number(st.comisionBoleto || 0);
@@ -232,74 +254,117 @@ const Pago: React.FC = () => {
   // numerados (correlativo, sin mapa). No se pueden escanear más que esto.
   const cantidadFisicaMax = st.idSillas?.length || cantidadNum;
 
-  const normalizarTexto = (s?: string) => String(s || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .trim();
+  // Con boleto físico (que ahora es la opción por defecto) no se puede
+  // avanzar la venta sin escanear/teclear el código de cada boleto.
+  const faltanCodigosFisicos = esFisico && codigosFisicos.length < cantidadFisicaMax;
 
-  /* Palabras de relleno que trae el texto libre del boleto impreso y que
-     no aportan a la comparación ("Fila A, Asiento 1" -> nos interesan
-     "a" y "1", no "fila"/"asiento"). No se listan letras sueltas: una
-     fila puede llamarse "S" o "N". */
-  const RELLENO_ASIENTO = new Set([
-    'fila', 'filas', 'asiento', 'asientos', 'silla', 'sillas', 'mesa', 'mesas',
-    'butaca', 'butacas', 'puesto', 'puestos', 'seat', 'row', 'numero', 'nro', 'num',
-  ]);
+  /* Arranque limpio en CADA entrada a esta pantalla -- Ionic puede
+     reactivar una instancia que ya estaba en su stack en vez de montar
+     una nueva, así que sin esto el "fase" (venta ya registrada), los
+     códigos de boleto físico escaneados, el comprobante adjuntado, etc.
+     de la venta ANTERIOR seguían apareciendo en la siguiente. No se
+     toca `metodo`/`metodosDisponibles` (mismo evento, mismos métodos
+     disponibles -- conservar la elección no es un bug) ni la carga de
+     descuentos (la maneja su propio efecto). */
+  useIonViewWillEnter(() => {
+    activoRef.current = true;
+    setCargando(false);
+    setError('');
+    setUrlPago('');
+    setFase('seleccion');
+    setEnviarCorreo(true);
+    setDunaModo('qr');
+    setToast('');
+    setDescuentoSel(null);
+    setTipoBoleto('fisico');
+    setCodigoFisicoInput('');
+    setCodigosFisicos([]);
+    setSeccionPorCodigo({});
+    setFilaAsientoPorCodigo({});
+    setBuscandoCodigo(false);
+    setIdRegistro(null);
+    setBancoComprobante('');
+    setNumeroTransaccion('');
+    setComprobanteFile(null);
+    setComprobantePreview('');
+    setComprobanteUrl('');
+    setSubiendoComprobante(false);
+    setErrorComprobante('');
+    setComprobanteAdjuntado(false);
+    setAnalizandoOcr(false);
+    setOcrResultado(null);
+    setOcrError('');
+    setMostrarConfirmacion(false);
+    setAlertaAnular(null);
+    setErrorAnular('');
+  });
 
-  /* Tokens alfabéticos / numéricos sueltos del texto, sin relleno.
-     "Fila A, Asiento 1" -> ["a","1"]; "A-s-1" -> ["a","1"];
-     "Mesa 5 / Silla 3" -> ["5","3"]. */
-  const tokensAsiento = (s?: string) =>
-    (normalizarTexto(s).match(/[a-z]+|\d+/g) || []).filter(t => !RELLENO_ASIENTO.has(t));
+  const idRegistroRef = useRef<number | null>(null);
+  useEffect(() => { idRegistroRef.current = idRegistro; }, [idRegistro]);
 
-  /* Número de asiento dentro de la etiqueta digital "<fila|mesa>-s-<n>"
-     (formato del mapa, ver silla en la BD) o de un correlativo suelto. */
-  const numeroDeSilla = (silla?: string): string => {
-    const s = normalizarTexto(silla).replace(/\s+/g, '');
-    if (s.includes('-s-')) return s.split('-s-').pop() || '';
-    const m = s.match(/(\d+)$/);
-    return m ? m[1] : '';
+  /* Retroceder con una orden ya creada pero SIN pagar (pasarela/Duna/
+     Payphone con el link todavía sin cobrar, o Transferencia/Depósito
+     esperando el comprobante) pide confirmar que se anule -- así los
+     asientos quedan libres para volver a elegirlos en la misma visita.
+     Métodos locales (efectivo/tarjeta en mano) ya quedan "Pagado" desde
+     que se registran, así que ahí no hay nada que anular. */
+  const [alertaAnular, setAlertaAnular] = useState<{ id: number } | null>(null);
+  const [errorAnular, setErrorAnular]   = useState('');
+  const [anulando, setAnulando]         = useState(false);
+
+  const anularYVolver = async (id: number) => {
+    setAnulando(true);
+    try {
+      const { data } = await axios.post(`${URL_BASE}/anularCompraPendiente`, {
+        id, id_usuario: cliente?.id || 0, id_operador: staff?.id || 0,
+      }, { headers: API_HDR });
+      if (data?.success) {
+        setToast('Compra anulada. Los asientos quedaron libres para elegir de nuevo.');
+        navigate(-1);
+      } else {
+        // El backend solo anula si sigue en "Pendiente" -- si ya está
+        // Pagada/Comprobar, rechaza y este es el aviso de "no se puede".
+        setErrorAnular(
+          data?.message || 'Esta compra ya no se puede anular -- puede que ya haya sido pagada o confirmada.'
+        );
+      }
+    } catch {
+      setErrorAnular('Error de conexión al anular la compra. Intenta de nuevo o revisa el detalle desde Buscar.');
+    } finally {
+      setAnulando(false);
+    }
   };
 
-  const mismoNumero = (a: string, b: string) =>
-    a !== '' && b !== '' && /^\d+$/.test(a) && /^\d+$/.test(b) && parseInt(a, 10) === parseInt(b, 10);
-
-  /* Compara lo que trae el boleto impreso (fila_asiento, texto libre del
-     Excel) contra el asiento que se eligió en el mapa. Solo se miran la
-     fila/mesa y el NÚMERO de asiento -- NO el nombre de la localidad ni
-     el formato exacto de la etiqueta: la BD guarda "A-s-1" y el impreso
-     dice "Fila A Asiento 1", así que un includes() directo nunca casa.
-     Si no hay dato de asiento (correlativo) no hay nada que comparar. */
-  const coincideConAsientoElegido = (filaAsiento: string, asiento?: AsientoDetalle): boolean => {
-    if (!asiento) return true;
-    const grupo = normalizarTexto(asiento.mesa || asiento.fila || (asiento.silla || '').split('-s-')[0]);
-    const numero = numeroDeSilla(asiento.silla);
-    if (!grupo && !numero) return true;
-
-    const toks = tokensAsiento(filaAsiento);
-    if (!toks.length) return false;
-
-    const numeroOk = !numero || toks.some(t => mismoNumero(t, numero));
-    const grupoOk = !grupo
-      || toks.some(t => t === grupo || mismoNumero(t, grupo))
-      // fila con letra que el impreso ni siquiera trae: no se puede
-      // verificar, no vale la pena frenar al operador por eso.
-      || (/^[a-z]+$/.test(grupo) && !toks.some(t => /^[a-z]+$/.test(t)));
-    return numeroOk && grupoOk;
-  };
-
-  /* Boleto encontrado pero que NO coincide con el asiento elegido en el
-     mapa -- se pide confirmación explícita antes de agregarlo. */
-  const [alertaAsiento, setAlertaAsiento] = useState<{ codigo: string; seccion: string; filaAsiento: string } | null>(null);
+  /* Con la venta ya registrada (fase !== 'seleccion') el botón atrás
+     visible se oculta (ver IonBackButton más abajo), pero el botón atrás
+     FÍSICO/hardware de Android no pasa por ahí. Sin interceptarlo, volvía
+     a Localidad con su selección de asientos ya vendida/reservada, dejando
+     "agregar más asientos" a la MISMA orden ya cerrada. Mientras la fase
+     sea 'seleccion' se deja el comportamiento normal (vuelve a Localidad
+     para elegir otro asiento antes de pagar). */
+  useEffect(() => {
+    const handler = (ev: Event) => {
+      if (!activoRef.current || faseRef.current === 'seleccion') return;
+      const id = idRegistroRef.current;
+      const cb = (id && !quedaPagadoAlInstante)
+        // Pasarela/Transferencia/Efectivo-Comnet con la orden todavía sin
+        // confirmar -- se avisa que retroceder la anula, en vez de
+        // dejarla "Pendiente" huérfana ocupando el asiento para siempre.
+        ? () => setAlertaAnular({ id })
+        : () => navigate('/dashboard/vender', { replace: true });
+      (ev as CustomEvent<{ register: (priority: number, cb: () => void) => void }>)
+        .detail.register(10, cb);
+    };
+    document.addEventListener('ionBackButton', handler);
+    return () => document.removeEventListener('ionBackButton', handler);
+  }, [navigate, quedaPagadoAlInstante]);
 
   /* Busca un código en el inventario de boletos físicos de este evento
-     (subido desde Admin > Evento en la web). Si matchea una sola sección
-     Y coincide con el asiento que le corresponde según el orden en que
-     se escaneó, se recuerda para descontarla del inventario y reemplazar
-     el QR de ese asiento al confirmar. Si NO coincide, se pide
-     confirmación antes de agregarlo (alertaAsiento). */
-  const buscarBoletoFisico = async (codigo: string, indiceAsiento: number) => {
+     (subido desde Admin > Evento en la web). El boleto impreso es el que
+     manda -- no se compara contra el asiento elegido en el mapa, solo se
+     guarda su sección y su fila/asiento (número de boleto) para mostrarlo
+     y para descontarlo del inventario al confirmar la venta. */
+  const buscarBoletoFisico = async (codigo: string) => {
     if (!st.codigoEvento) return;
     setBuscandoCodigo(true);
     try {
@@ -309,12 +374,8 @@ const Pago: React.FC = () => {
       });
       if (data?.success && Array.isArray(data.data) && data.data.length === 1) {
         const f = data.data[0];
-        const asiento = st.asientosDetalle?.[indiceAsiento];
-        if (asiento && !coincideConAsientoElegido(f.fila_asiento, asiento)) {
-          setAlertaAsiento({ codigo, seccion: f.seccion, filaAsiento: f.fila_asiento || '' });
-          return;
-        }
         setSeccionPorCodigo(prev => ({ ...prev, [codigo]: f.seccion }));
+        setFilaAsientoPorCodigo(prev => ({ ...prev, [codigo]: f.fila_asiento || '' }));
         setToast(`Boleto encontrado: ${f.seccion}${f.fila_asiento ? ' · ' + f.fila_asiento : ''}`);
       } else if (data?.success && Array.isArray(data.data) && data.data.length > 1) {
         setToast(`Ese código existe en ${data.data.length} secciones -- se agrega igual, sin descontar del inventario.`);
@@ -337,9 +398,8 @@ const Pago: React.FC = () => {
       setToast(`Ya escaneaste los ${cantidadFisicaMax} boleto${cantidadFisicaMax > 1 ? 's' : ''} de esta venta.`);
       return;
     }
-    const indice = codigosFisicos.length;
     setCodigosFisicos(prev => [...prev, codigo]);
-    buscarBoletoFisico(codigo, indice);
+    buscarBoletoFisico(codigo);
   };
 
   /* Auto-envío al dejar de escribir: los lectores de código de barras
@@ -379,6 +439,11 @@ const Pago: React.FC = () => {
   const quitarCodigoFisico = (codigo: string) => {
     setCodigosFisicos(prev => prev.filter(c => c !== codigo));
     setSeccionPorCodigo(prev => {
+      const next = { ...prev };
+      delete next[codigo];
+      return next;
+    });
+    setFilaAsientoPorCodigo(prev => {
       const next = { ...prev };
       delete next[codigo];
       return next;
@@ -442,6 +507,10 @@ const Pago: React.FC = () => {
 
   const confirmar = async () => {
     if (!cliente) { setError('Falta el cliente de la venta.'); return; }
+    if (faltanCodigosFisicos) {
+      setError('Escanea el código de todos los boletos físicos antes de registrar la venta.');
+      return;
+    }
     setCargando(true);
     setError('');
     try {
@@ -497,13 +566,16 @@ const Pago: React.FC = () => {
 
       if (data.success || data.idRegistro) {
         if (data.url) setUrlPago(data.url);
+        // Se guarda para TODOS los métodos (antes solo para Transferencia)
+        // -- lo usa el back físico/hardware para saber qué orden anular si
+        // se retrocede antes de que quede confirmada como pagada.
+        if (data.idRegistro) setIdRegistro(data.idRegistro);
         if (esFisico && data.idRegistro) {
           await asignarBoletosFisicosYCanjear(data.idRegistro, !esLocal);
         }
         if (esTransferencia && data.idRegistro) {
           // La orden queda "Pendiente" en el backend -- se pide el
           // comprobante antes de dar la venta por terminada.
-          setIdRegistro(data.idRegistro);
           setFase('comprobante');
         } else {
           setFase('exito');
@@ -716,6 +788,12 @@ const Pago: React.FC = () => {
           <div className="pago-exito">
             <IonIcon icon={checkmarkCircleOutline} className="pago-exito-icon" />
             <h2>¡Venta registrada!</h2>
+            {!quedaPagadoAlInstante && (
+              <p className="pago-exito-nota">
+                Los boletos se generarán y los asientos se asignarán automáticamente en cuanto se confirme el pago
+                (puede tardar unos minutos). Al cliente también le llegarán las entradas digitales a su correo.
+              </p>
+            )}
             {esLocal && !esFisico && (
               <p>La entrada quedó pagada. {enviarCorreo ? 'Se envió al correo del cliente.' : ''}</p>
             )}
@@ -1005,7 +1083,9 @@ const Pago: React.FC = () => {
                       <div className="fisico-chips">
                         {codigosFisicos.map((c) => (
                           <span key={c} className="fisico-chip" onClick={() => quitarCodigoFisico(c)}>
-                            {c}{seccionPorCodigo[c] ? ` · ${seccionPorCodigo[c]}` : ''}
+                            {c}
+                            {seccionPorCodigo[c] ? ` · ${seccionPorCodigo[c]}` : ''}
+                            {filaAsientoPorCodigo[c] ? ` · ${filaAsientoPorCodigo[c]}` : ''}
                             <IonIcon icon={closeCircleOutline} />
                           </span>
                         ))}
@@ -1118,10 +1198,16 @@ const Pago: React.FC = () => {
               </div>
             </div>
 
+            {faltanCodigosFisicos && (
+              <p className="pago-error">
+                Faltan escanear {cantidadFisicaMax - codigosFisicos.length} código{cantidadFisicaMax - codigosFisicos.length > 1 ? 's' : ''} de boleto físico para poder continuar.
+              </p>
+            )}
+
             {error && <p className="pago-error">{error}</p>}
 
             <IonButton expand="block" className="btn-confirmar"
-              onClick={confirmar} disabled={cargando || !metodo}>
+              onClick={() => setMostrarConfirmacion(true)} disabled={cargando || !metodo || faltanCodigosFisicos}>
               {cargando
                 ? <><IonSpinner name="crescent" className="btn-spinner" /> Registrando…</>
                 : `Registrar venta  $${totalACobrar.toFixed(2)}`
@@ -1138,32 +1224,128 @@ const Pago: React.FC = () => {
           onDidDismiss={() => setToast('')}
         />
 
+        {/* Resumen de confirmación -- se abre al tocar "Registrar venta";
+            confirmar() (el POST real) solo se dispara desde el botón de
+            adentro, nunca automáticamente. */}
+        <IonModal isOpen={mostrarConfirmacion} onDidDismiss={() => setMostrarConfirmacion(false)}
+          breakpoints={[0, 1]} initialBreakpoint={1}>
+          <IonHeader>
+            <IonToolbar className="pago-toolbar">
+              <IonTitle>Confirmar venta</IonTitle>
+              <IonButtons slot="end">
+                <IonButton onClick={() => setMostrarConfirmacion(false)}>
+                  <IonIcon icon={closeOutline} slot="icon-only" />
+                </IonButton>
+              </IonButtons>
+            </IonToolbar>
+          </IonHeader>
+          <IonContent className="pago-content">
+            <div className="pago-container">
+              <div className="pago-card">
+                <h3 className="pago-card-title">Resumen de la venta</h3>
+                <p className="pago-evento-nombre">{st.nombreEvento || '—'}</p>
+                <div className="pago-fila">
+                  <span className="pago-lbl">Cliente</span>
+                  <span className="pago-val">{cliente?.nombreCompleto || cliente?.cedula || '—'}</span>
+                </div>
+                <div className="pago-fila">
+                  <span className="pago-lbl">Localidad</span>
+                  <span className="pago-val">{st.localidadNombre || '—'}</span>
+                </div>
+                <div className="pago-fila">
+                  <span className="pago-lbl">Cantidad</span>
+                  <span className="pago-val">
+                    {st.idSillas?.length
+                      ? `${st.idSillas.length} asiento${st.idSillas.length > 1 ? 's' : ''}`
+                      : `${cantidadNum} boleto${cantidadNum > 1 ? 's' : ''}`}
+                  </span>
+                </div>
+                <div className="pago-fila">
+                  <span className="pago-lbl">Método de pago</span>
+                  <span className="pago-val">{met.label || '—'}</span>
+                </div>
+                <div className="pago-fila">
+                  <span className="pago-lbl">Tipo de boleto</span>
+                  <span className="pago-val">{esFisico ? 'Físico' : 'Digital'}</span>
+                </div>
+              </div>
+
+              <div className="pago-card">
+                <h3 className="pago-card-title">Detalle de precios</h3>
+                <div className="pago-fila">
+                  <span className="pago-lbl">Subtotal</span>
+                  <span className="pago-val">${subtotal.toFixed(2)}</span>
+                </div>
+                {comisionServicio > 0 && (
+                  <div className="pago-fila">
+                    <span className="pago-lbl">Servicio Em. por Boleto</span>
+                    <span className="pago-val">${comisionServicio.toFixed(2)}</span>
+                  </div>
+                )}
+                {ivaImporte > 0 && (
+                  <div className="pago-fila">
+                    <span className="pago-lbl">IVA ({Math.round(ivaRate * 100)}%)</span>
+                    <span className="pago-val">${ivaImporte.toFixed(2)}</span>
+                  </div>
+                )}
+                {comisionBancaria > 0 && (
+                  <div className="pago-fila">
+                    <span className="pago-lbl">Comisión ({Math.round(met.pct * 100)}%)</span>
+                    <span className="pago-val">${comisionBancaria.toFixed(2)}</span>
+                  </div>
+                )}
+                {descuentoActivo && (
+                  <div className="pago-fila">
+                    <span className="pago-lbl">Descuento ({descuentoActivo.nombre} −{descuentoActivo.porcentaje}%)</span>
+                    <span className="pago-val">−${montoDescuento.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="pago-divider" />
+                <div className="pago-fila pago-total-row">
+                  <span>TOTAL A COBRAR</span>
+                  <span>${totalACobrar.toFixed(2)}</span>
+                </div>
+              </div>
+
+              <p className="pago-confirmacion-hint">
+                Revisa los datos antes de continuar. Una vez registrada, la venta no se puede deshacer desde aquí.
+              </p>
+
+              <IonButton expand="block" className="btn-confirmar" disabled={cargando || faltanCodigosFisicos}
+                onClick={() => { setMostrarConfirmacion(false); confirmar(); }}>
+                {cargando
+                  ? <><IonSpinner name="crescent" className="btn-spinner" /> Registrando…</>
+                  : 'Confirmar venta'}
+              </IonButton>
+              <IonButton expand="block" fill="outline" disabled={cargando}
+                onClick={() => setMostrarConfirmacion(false)}>
+                Revisar de nuevo
+              </IonButton>
+            </div>
+          </IonContent>
+        </IonModal>
+
         <IonAlert
-          isOpen={!!alertaAsiento}
-          header="El boleto no coincide con el asiento elegido"
-          message={alertaAsiento
-            ? `Este boleto es de ${alertaAsiento.seccion}${alertaAsiento.filaAsiento ? ' · ' + alertaAsiento.filaAsiento : ''}, pero no coincide con el asiento elegido en el mapa. ¿Continuar de todas formas?`
-            : ''}
+          isOpen={!!alertaAnular}
+          header="¿Anular esta compra?"
+          message={`Esta compra (#${alertaAnular?.id ?? ''}) todavía no está pagada. Si retrocedes, se anulará y los asientos quedarán libres para volver a elegirlos.`}
           buttons={[
+            { text: 'Seguir aquí', role: 'cancel', handler: () => setAlertaAnular(null) },
             {
-              text: 'Salir',
-              role: 'cancel',
-              handler: () => {
-                if (alertaAsiento) quitarCodigoFisico(alertaAsiento.codigo);
-                setAlertaAsiento(null);
-              },
-            },
-            {
-              text: 'Está bien',
-              handler: () => {
-                if (alertaAsiento) {
-                  setSeccionPorCodigo(prev => ({ ...prev, [alertaAsiento.codigo]: alertaAsiento.seccion }));
-                  setToast('Boleto agregado igual -- revisa que sea el correcto.');
-                }
-                setAlertaAsiento(null);
-              },
+              text: anulando ? 'Anulando…' : 'Anular y volver',
+              role: 'destructive',
+              handler: () => { if (alertaAnular) anularYVolver(alertaAnular.id); },
             },
           ]}
+          onDidDismiss={() => setAlertaAnular(null)}
+        />
+
+        <IonAlert
+          isOpen={!!errorAnular}
+          header="No se puede anular"
+          message={errorAnular}
+          buttons={['Entendido']}
+          onDidDismiss={() => setErrorAnular('')}
         />
 
       </IonContent>

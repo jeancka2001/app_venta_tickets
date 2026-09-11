@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   IonContent, IonHeader, IonPage, IonTitle, IonToolbar,
   IonButtons, IonButton, IonIcon, IonInput, IonSpinner, IonText, IonBadge, IonModal,
+  useIonViewWillEnter,
 } from '@ionic/react';
 import {
   chevronBackOutline, searchOutline, checkmarkCircleOutline,
@@ -240,6 +241,22 @@ const VentaEvento: React.FC = () => {
     setNombreNuevo(''); setEmailNuevo(''); setMovilNuevo(''); setCiudadNuevo('');
     setFuenteDatos(null);
   };
+
+  /* Arranque limpio en CADA entrada a esta pantalla -- Ionic puede
+     reactivar una instancia que ya existía en su stack en vez de montar
+     una nueva, así que el estado de useState (cliente, cédula buscada)
+     puede quedar "pegado" de una venta anterior. Sin esto, al vender de
+     nuevo aparecía la misma cédula/cliente de la compra que se acababa de
+     completar, como si la venta anterior no se hubiera cerrado. */
+  useIonViewWillEnter(() => {
+    setCliente(null);
+    setCedulaBusqueda('');
+    setNoEncontrado(false);
+    setError('');
+    setNombreNuevo(''); setEmailNuevo(''); setMovilNuevo(''); setCiudadNuevo('');
+    setFuenteDatos(null);
+    setPrecios([]);
+  });
 
   useEffect(() => {
     if (!cliente || !codigoEvento) return;

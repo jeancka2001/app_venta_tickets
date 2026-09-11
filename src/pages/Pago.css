@@ -300,6 +300,7 @@
   line-height: 1.4;
 }
 .ocr-hint { font-size: 0.72rem; color: #9da5b4; margin: 8px 0 0; }
+.pago-confirmacion-hint { font-size: 0.78rem; color: #6b7a90; text-align: center; margin: 4px 0 12px; }
 
 /* ── Éxito ── */
 .pago-exito {
@@ -312,6 +313,14 @@
 .pago-exito-icon { font-size: 72px; color: #27ae60; margin-bottom: 16px; }
 .pago-exito h2 { font-size: 1.3rem; font-weight: 700; color: #1a1e52; margin: 0 0 8px; }
 .pago-exito p { font-size: 0.9rem; color: #6b7a90; margin: 0 0 24px; max-width: 320px; }
+.pago-exito-nota {
+  background: #eef4ff;
+  border: 1px solid #cddcff;
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: #2d358c !important;
+  max-width: 340px !important;
+}
 
 .cuentas-lista {
   display: flex;
@@ -410,6 +419,7 @@
 
   .pago-exito h2 { color: #e8ecf5; }
   .pago-exito p  { color: #9da5b4; }
+  .pago-exito-nota { background: #1e2540; border-color: #3a4a8f; color: #a9bbff !important; }
 
   .cuenta-item  { background: #1e2540; }
   .cuenta-banco { color: #e8ecf5; }

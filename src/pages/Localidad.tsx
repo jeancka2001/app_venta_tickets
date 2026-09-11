@@ -123,6 +123,12 @@ const Localidad: React.FC = () => {
   const pagandoRef    = useRef(false);
   const idEspacioRef  = useRef<number | null>(null);
   const cargandoRef   = useRef(true);
+  /* Si esta pagina NO es la vista activa en este momento (Ionic mantiene
+     instancias fuera de pantalla en su stack sin desmontarlas), el
+     listener global de ionBackButton de mas abajo no debe interceptar el
+     botón atrás -- si no, un back en OTRA pantalla dispara por error
+     "¿Salir sin terminar?" de esta. */
+  const activoRef      = useRef(false);
 
   const timerRef  = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollRef   = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -146,6 +152,7 @@ const Localidad: React.FC = () => {
 
   useEffect(() => {
     const handler = (ev: Event) => {
+      if (!activoRef.current) return; // esta vista no esta activa -- no interceptar
       (ev as CustomEvent<{ register: (priority: number, cb: () => void) => void }>)
         .detail.register(10, intentarSalir);
     };
@@ -179,12 +186,21 @@ const Localidad: React.FC = () => {
       .then((data) => {
         if (!data) return;
         setLocalidad(data);
-        if (reconcile) {
+        // Reconstruye `sel` SIEMPRE desde la verdad del servidor (nunca a
+        // partir del `sel` local anterior): son exactamente los asientos
+        // que sigan en 'reservado' (una espera activa, no una venta ya
+        // cerrada) Y bajo la cédula de este cliente. Esto es lo que evita
+        // que un asiento YA VENDIDO en una compra anterior (estado
+        // "ocupado", pero de la misma cédula) reaparezca marcado como
+        // seleccionado si se vuelve a entrar a esta misma localidad.
+        // "Correlativo" no tiene items por cédula (el backend no la manda
+        // para ese tipo) -- ver limpieza dedicada en useIonViewWillEnter.
+        if (reconcile && esCorrelativo === false) {
           const freshItems: SillaItem[] = data.items ?? [];
-          setSel(prev => prev.filter(s => {
-            const fresh = freshItems.find(fi => fi.idsilla === s.idsilla);
-            return fresh && fresh.estado !== 'disponible' && fresh.cedula === (cliente?.cedula ?? '');
-          }));
+          const cedulaActual = cliente?.cedula ?? '';
+          setSel(cedulaActual
+            ? freshItems.filter(fi => fi.estado === 'reservado' && fi.cedula === cedulaActual)
+            : []);
         }
       })
       .catch(() => {})
@@ -249,12 +265,38 @@ const Localidad: React.FC = () => {
   }, [idEspacio, tipo]);
 
   useIonViewWillEnter(() => {
+    activoRef.current = true;
     pagandoRef.current = false;
+    // Arranque limpio en CADA entrada a esta vista (Ionic puede reactivar
+    // una instancia ya existente en vez de montar una nueva, así que no
+    // basta con los valores iniciales de useState): sin esto, un asiento
+    // o cantidad de una venta anterior se queda "pegado" y puede mezclarse
+    // con la próxima venta a la misma cédula/localidad.
+    setProcesando(new Set());
+    setToast('');
+    setConfirmarSalir(false);
+    if (tipo === 'correlativo') {
+      // El endpoint de este tipo no distingue "reservado por mí" de
+      // "vendido" ni manda la cédula por asiento, así que no hay forma de
+      // reconciliar cuántos tiene esta cédula ya apartados -- se limpia
+      // cualquier reserva vieja (best-effort) y se arranca siempre desde 0.
+      axios.post(
+        `${URL_BASE}/selecionar_localidad_correlativa`,
+        {
+          id, cedula: cliente?.cedula || '', estado: 'reservado', cantidad: 0, mas: 'eliminar',
+          id_usuario: cliente?.id || 0, id_operador: staff?.id || 0,
+        },
+        { headers: API_HDR }
+      ).catch(() => {});
+      setCantidad(1);
+      corrActivoRef.current = false;
+    }
     cargarLocalidad(true);
     iniciarTemporizadores();
   });
 
   useIonViewWillLeave(() => {
+    activoRef.current = false;
     detenerTemporizadores();
     if (pagandoRef.current) return;
 
@@ -588,10 +630,6 @@ const Localidad: React.FC = () => {
                 precio,
                 cantidad:        cantCarrito,
                 idSillas:        tipo === 'correlativo' ? [] : sel.map(s => s.idsilla),
-                // Fila/mesa/silla reales de cada asiento elegido en el mapa
-                // -- se usa en Pago.tsx para avisar si el boleto físico
-                // escaneado no coincide con el asiento que se eligió aquí.
-                asientosDetalle: tipo === 'correlativo' ? [] : sel.map(s => ({ idsilla: s.idsilla, fila: s.fila, mesa: s.mesa, silla: s.silla })),
                 comisionBoleto:  parseFloat(st.comisionBoleto || '0'),
                 iva:             st.iva || '1.00',
                 cliente,
