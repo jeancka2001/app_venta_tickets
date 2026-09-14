@@ -4,10 +4,11 @@ import {
   IonIcon, IonButton, IonButtons, IonSearchbar, IonSpinner, IonText, IonBadge,
 } from '@ionic/react';
 import {
-  addOutline, calendarNumberOutline, locationOutline, chevronForwardOutline, barChartOutline,
+  addOutline, calendarNumberOutline, locationOutline, chevronForwardOutline, barChartOutline, cardOutline,
 } from 'ionicons/icons';
 import { useNavigate } from 'react-router-dom';
-import { listarEventosAdmin, type EventoAdmin } from '../utils/adminEventos';
+import { listarEventosAdmin, SesionExpiradaError, type EventoAdmin } from '../utils/adminEventos';
+import { logoutStaff } from '../utils/staffAuth';
 import marcaTickets from '../images/MARCA_TICKETS.png';
 import './AdminEventos.css';
 
@@ -40,12 +41,17 @@ const AdminEventos: React.FC = () => {
     try {
       const lista = await listarEventosAdmin();
       setEventos(lista);
-    } catch {
+    } catch (err) {
+      if (err instanceof SesionExpiradaError) {
+        logoutStaff();
+        navigate('/home', { replace: true });
+        return;
+      }
       setError('Error al conectar con el servidor.');
     } finally {
       setCargando(false);
     }
-  }, []);
+  }, [navigate]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
@@ -60,8 +66,11 @@ const AdminEventos: React.FC = () => {
           <IonButtons slot="start">
             <img src={marcaTickets} alt="T-ickets" className="toolbar-logo" />
           </IonButtons>
-          <IonTitle>Admin · Eventos</IonTitle>
+          <IonTitle size="small">Admin · Eventos</IonTitle>
           <IonButtons slot="end">
+            <IonButton onClick={() => navigate('/admin/metodos-pago')}>
+              <IonIcon icon={cardOutline} slot="icon-only" />
+            </IonButton>
             <IonButton onClick={() => navigate('/admin/reporte-usuarios')}>
               <IonIcon icon={barChartOutline} slot="icon-only" />
             </IonButton>

@@ -1,11 +1,10 @@
 import axios from 'axios';
-import { MS_LOGIN_AUTH_HEADERS } from './msLoginAuth';
+import { staffAuthHeaders } from './staffAuth';
 
 /* Misma consulta que usa TicketsWeb/app_tickets para saber qué pasarelas
    están activas y su comisión configurada desde el panel admin (global o
    por evento vía codigoEvento). Copiado tal cual de app_tickets. */
 
-const API_HDR = MS_LOGIN_AUTH_HEADERS;
 const URL_BASE = 'https://api.t-ickets.com/ms_login/api/v1';
 
 export interface MetodoPagoActivo {
@@ -16,13 +15,61 @@ export interface MetodoPagoActivo {
 
 export const obtenerMetodosPagoActivos = async (codigoEvento?: string): Promise<MetodoPagoActivo[]> => {
   try {
+    // Con el JWT del vendedor logueado (no el token de servicio a secas):
+    // el backend decodifica req.userData de ahí para aplicar la
+    // restricción por usuario (usuario_metodos_pago) si el admin le
+    // asignó un subconjunto -- sin esto, cualquier vendedor veía TODOS
+    // los métodos activos sin importar lo que se le configuró en la web.
     const { data } = await axios.get(`${URL_BASE}/metodos_pago_activos`, {
-      headers: API_HDR,
+      headers: staffAuthHeaders(),
       params: codigoEvento ? { codigoEvento } : undefined,
     });
     return Array.isArray(data?.data) ? data.data : [];
   } catch {
     return [];
+  }
+};
+
+/* Para la pantalla de Admin > Métodos de pago: a diferencia de
+   obtenerMetodosPagoActivos() (que traga errores para no romper la venta),
+   acá se necesita saber SI falló y por qué -- mismo bug que tenía la web
+   (ver ConfiguracionPagos/index.js): con el JWT de admin vencido (dura 1h)
+   el switch de activar/desactivar parecía "no hacer nada" sin avisar. */
+export const listarMetodosPagoAdmin = async (): Promise<{
+  success: boolean;
+  data: MetodoPagoActivo[];
+  sesionExpirada: boolean;
+}> => {
+  try {
+    const { data } = await axios.get(`${URL_BASE}/metodos_pago_activos`, {
+      headers: staffAuthHeaders(),
+    });
+    return { success: !!data?.success, data: Array.isArray(data?.data) ? data.data : [], sesionExpirada: false };
+  } catch (err) {
+    const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+    return { success: false, data: [], sesionExpirada: status === 401 || status === 403 };
+  }
+};
+
+export const toggleMetodoPagoActivo = async (
+  metodo: string,
+  activo: boolean
+): Promise<{ success: boolean; message?: string }> => {
+  try {
+    const { data } = await axios.patch(
+      `${URL_BASE}/configuracion_pagos/${encodeURIComponent(metodo)}/activo`,
+      { activo },
+      { headers: staffAuthHeaders() }
+    );
+    return { success: !!data?.success, message: data?.message };
+  } catch (err) {
+    const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+    return {
+      success: false,
+      message: status === 401 || status === 403
+        ? 'Tu sesión expiró. Cierra sesión y vuelve a iniciar sesión para poder activar/desactivar métodos.'
+        : 'No se pudo cambiar el estado (error de conexión).',
+    };
   }
 };
 
@@ -43,7 +90,11 @@ export interface MetodoConfigurable {
    ni en la web) y "Recaudación Terceros" (oculto también en la web). */
 export const METODOS_CONFIGURABLES: MetodoConfigurable[] = [
   { key: 'Efectivo-Local', label: 'Efectivo',                 pctDefault: 0,    categoria: 'local' },
-  { key: 'Tarjeta-Local',  label: 'Tarjeta física (POS)',      pctDefault: 0,    categoria: 'local' },
+  // 0.15 -- mismo respaldo que GetValores() en CarritoLocalStorang.js (web):
+  // si por lo que sea el backend no devuelve el % configurado para este
+  // método, ANTES esto caía a 0 acá (pero a 0.15 en la web), lo que hacía
+  // que la app cobrara de menos en una venta con Tarjeta física.
+  { key: 'Tarjeta-Local',  label: 'Tarjeta física (POS)',      pctDefault: 0.15, categoria: 'local' },
   { key: 'Efectivo-QR',    label: 'Efectivo (QR recaudación)', pctDefault: 0,    categoria: 'local' },
   { key: 'Efectivo',       label: 'Efectivo (Speed/Comnet)',   pctDefault: 0.08, categoria: 'local' },
   { key: 'PagoPlux',       label: 'Link de pago (Tarjeta)',    pctDefault: 0.11, categoria: 'gateway' },

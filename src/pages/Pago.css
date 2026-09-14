@@ -138,6 +138,11 @@
 .duna-modo-sel { border-color: #2d358c; background: #eef0fb; color: #2d358c; }
 .duna-modo-hint { font-size: 0.73rem; color: #9da5b4; }
 
+/* ── Tarjeta física (POS): número de lote y referencia ── */
+.tarjeta-fisica-campos { display: flex; gap: 10px; }
+.tarjeta-fisica-campo { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.tarjeta-fisica-campo label { font-size: 0.78rem; font-weight: 700; color: #6b7a90; }
+
 /* ── Boleto físico (escaneo de código de barras) ── */
 .fisico-scan-wrap { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
 .fisico-scan-input-row { display: flex; gap: 6px; align-items: center; }
@@ -311,6 +316,7 @@
   padding: 60px 24px;
 }
 .pago-exito-icon { font-size: 72px; color: #27ae60; margin-bottom: 16px; }
+.pago-procesando-spinner { width: 56px; height: 56px; margin-bottom: 16px; --color: #2d358c; }
 .pago-exito h2 { font-size: 1.3rem; font-weight: 700; color: #1a1e52; margin: 0 0 8px; }
 .pago-exito p { font-size: 0.9rem; color: #6b7a90; margin: 0 0 24px; max-width: 320px; }
 .pago-exito-nota {
@@ -416,10 +422,12 @@
   .duna-modo-item  { border-color: #2a3050; color: #9da5b4; }
   .duna-modo-sel   { border-color: #7b8fdc; background: #1e2540; color: #7b8fdc; }
   .duna-modo-hint  { color: #6b7a90; }
+  .tarjeta-fisica-campo label { color: #9da5b4; }
 
   .pago-exito h2 { color: #e8ecf5; }
   .pago-exito p  { color: #9da5b4; }
   .pago-exito-nota { background: #1e2540; border-color: #3a4a8f; color: #a9bbff !important; }
+  .pago-procesando-spinner { --color: #7b8fdc; }
 
   .cuenta-item  { background: #1e2540; }
   .cuenta-banco { color: #e8ecf5; }

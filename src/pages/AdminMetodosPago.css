@@ -1,0 +1,75 @@
+.admin-toolbar {
+  --background: #1a1e52;
+  --color: #ffffff;
+  --border-color: transparent;
+}
+.admin-toolbar ion-back-button { --color: #ffffff; }
+
+.admin-content { --background: #f4f6fb; }
+
+.toolbar-logo {
+  height: 28px;
+  width: auto;
+  object-fit: contain;
+  margin-left: 6px;
+}
+
+.metpago-container {
+  padding: 16px 16px 40px;
+  max-width: 540px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 3px 12px rgba(15, 52, 96, 0.08);
+}
+
+.metpago-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.metpago-info { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.metpago-icono { font-size: 1.5rem; color: #2d358c; flex-shrink: 0; }
+.metpago-textos { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.metpago-nombre { font-size: 0.9rem; font-weight: 700; color: #1a1e52; }
+.metpago-comision { font-size: 0.76rem; color: #6b7a90; }
+
+.metpago-estado { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+
+.badge-inactivo { --background: #f0f0f0; --color: #6b7a90; }
+
+.metpago-cargando { display: flex; justify-content: center; padding: 30px 0; }
+
+.metpago-aviso {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #b7510a;
+  background: #fef3e2;
+  font-size: 0.85rem;
+}
+
+.metpago-nota {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  text-align: center;
+  padding: 0 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .admin-content  { --background: #101624; }
+  .admin-card     { background: #1a2035; box-shadow: 0 3px 12px rgba(0,0,0,.4); }
+  .metpago-nombre { color: #e8ecf5; }
+  .metpago-comision { color: #9da5b4; }
+  .metpago-icono  { color: #7b8fdc; }
+  .badge-inactivo { --background: #1e2540; --color: #6b7a90; }
+}

@@ -27,7 +27,7 @@ const Perfil: React.FC = () => {
       <IonHeader>
         <IonToolbar className="perfil-toolbar">
           <img src={marcaTickets} alt="T-ickets" className="toolbar-logo" />
-          <IonTitle>Mi Perfil</IonTitle>
+          <IonTitle size="small">Mi Perfil</IonTitle>
         </IonToolbar>
       </IonHeader>
 

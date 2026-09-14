@@ -86,7 +86,7 @@ const Reporte: React.FC = () => {
       <IonHeader>
         <IonToolbar className="reporte-toolbar">
           <img src={marcaTickets} alt="T-ickets" className="toolbar-logo" />
-          <IonTitle>Mi Reporte</IonTitle>
+          <IonTitle size="small">Mi Reporte</IonTitle>
         </IonToolbar>
       </IonHeader>
 

@@ -94,15 +94,26 @@ export interface LocalidadAdmin {
    usa la web para no dejar eventos viejos invisibles. */
 const ESTADOS_EVENTO = ['ACTIVO', 'PROCESO', 'PROXIMO', 'CANCELADO', 'FINALIZADO'];
 
+/* Lanzada cuando el backend responde 401 (JWT del admin vencido -- dura
+   1h) en alguna de las 5 consultas en paralelo, para que la pantalla lo
+   distinga de un simple error de conexión y mande a loguearse otra vez en
+   vez de mostrar "0 eventos" sin explicación. */
+export class SesionExpiradaError extends Error {}
+
 export const listarEventosAdmin = async (): Promise<EventoAdmin[]> => {
   const headers = staffAuthHeaders();
+  let sesionExpirada = false;
   const resultados = await Promise.all(
     ESTADOS_EVENTO.map(estado =>
       axios.get(`${URL_ROOT}/listareventos/${estado}/`, { headers })
         .then(r => (r.data?.success && Array.isArray(r.data?.data)) ? r.data.data as EventoAdmin[] : [])
-        .catch(() => [] as EventoAdmin[])
+        .catch((err) => {
+          if (axios.isAxiosError(err) && err.response?.status === 401) sesionExpirada = true;
+          return [] as EventoAdmin[];
+        })
     )
   );
+  if (sesionExpirada) throw new SesionExpiradaError('Sesión expirada');
   const mapa = new Map<string, EventoAdmin>();
   resultados.flat().forEach(ev => mapa.set(ev.codigoEvento, ev));
   return Array.from(mapa.values()).sort((a, b) => (b.fechaConcierto || '').localeCompare(a.fechaConcierto || ''));

@@ -106,6 +106,12 @@
   margin-top: 3px;
 }
 
+.venta-pendiente-aviso {
+  align-items: flex-start;
+  line-height: 1.4;
+  margin: 0 0 12px;
+}
+
 .venta-error {
   font-size: 0.82rem;
   color: #e74c3c;

@@ -132,7 +132,7 @@ const MisVentas: React.FC = () => {
           <IonButtons slot="start">
             <img src={marcaTickets} alt="T-ickets" className="toolbar-logo" />
           </IonButtons>
-          <IonTitle>Mis ventas</IonTitle>
+          <IonTitle size="small">Mis ventas</IonTitle>
         </IonToolbar>
         <IonToolbar className="misventas-toolbar">
           <IonSearchbar

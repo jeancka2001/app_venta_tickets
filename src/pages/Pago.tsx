@@ -71,7 +71,7 @@ const URL_UPLOAD_IMG = 'https://codigomarret.online/upload/api/img';
    el propio comprobante en registraCompra/comprobantes_adicionales. */
 const URL_OCR_COMPROBANTE = 'https://api.t-ickets.com/mikroti/Boleteria/imagenocr/analizar';
 
-type Fase = 'seleccion' | 'comprobante' | 'exito';
+type Fase = 'seleccion' | 'procesando' | 'comprobante' | 'exito';
 
 const Pago: React.FC = () => {
   const location = useLocation();
@@ -115,6 +115,12 @@ const Pago: React.FC = () => {
      dispositivo, así que lo natural es mostrarle el QR al cliente. */
   const [dunaModo, setDunaModo] = useState<'qr' | 'link'>('qr');
   const [toast, setToast] = useState('');
+
+  /* Tarjeta física (POS en mano): número de lote y referencia del
+     voucher -- obligatorios, máximo 6 dígitos cada uno. El backend
+     también los valida (por si se llega a saltar esto). */
+  const [tarjetaLote, setTarjetaLote] = useState('');
+  const [tarjetaReferencia, setTarjetaReferencia] = useState('');
 
   /* Descuentos (%) que este vendedor puede aplicar a esta venta (uno solo
      por venta). El backend revalida y recalcula el total al registrar la
@@ -166,17 +172,23 @@ const Pago: React.FC = () => {
     (async () => {
       const activos = await obtenerMetodosPagoActivos(st.codigoEvento);
       const porMetodo = new Map(activos.map(a => [a.metodo, a]));
-      // Se muestran SIEMPRE todos los métodos, para cualquier perfil
-      // (vendedor, suscriptor o admin). El endpoint metodos_pago_activos
-      // solo se usa para tomar la comisión configurada de cada método;
-      // ya no se usa para ocultar métodos "inactivos".
-      const lista: MetodoItem[] = METODOS_CONFIGURABLES.map(m => {
-        const pct = porMetodo.get(m.key)?.comision_porcentaje ?? m.pctDefault;
-        return {
-          key: m.key, label: m.label, pct, categoria: m.categoria,
-          desc: pct > 0 ? `+${Math.round(pct * 100)}% comisión` : 'Sin comisión',
-        };
-      });
+      // Se filtra por PRESENCIA en la respuesta de metodos_pago_activos, no
+      // por su flag `activo`: si el vendedor tiene métodos restringidos
+      // (usuario_metodos_pago, configurado desde Editar usuario en la web)
+      // el backend devuelve SOLO esos; si no tiene restricción devuelve el
+      // catálogo completo (con cualquier valor de `activo` -- ese
+      // interruptor global no se usa acá por ahora, para no ocultar nada
+      // por una fila mal configurada). Lista vacía (falla de red/token)
+      // también muestra todos, para no dejar al vendedor sin ninguna opción.
+      const lista: MetodoItem[] = METODOS_CONFIGURABLES
+        .filter(m => activos.length === 0 || porMetodo.has(m.key))
+        .map(m => {
+          const pct = porMetodo.get(m.key)?.comision_porcentaje ?? m.pctDefault;
+          return {
+            key: m.key, label: m.label, pct, categoria: m.categoria,
+            desc: pct > 0 ? `+${Math.round(pct * 100)}% comisión` : 'Sin comisión',
+          };
+        });
       if (cancelado) return;
       setMetodosDisponibles(lista);
       setMetodo(prev => prev || lista[0]?.key || '');
@@ -190,8 +202,11 @@ const Pago: React.FC = () => {
       const lista = await obtenerDescuentosVendedor(st.codigoEvento, staff?.id as number | undefined);
       if (cancelado) return;
       setDescuentos(lista);
-      // Si el descuento elegido ya no está disponible, se limpia.
-      setDescuentoSel(prev => (prev && lista.some(d => d.id === prev) ? prev : null));
+      // Si el descuento elegido ya no está disponible, se cae al primero de
+      // la lista (preseleccionado por defecto cuando el vendedor tiene
+      // alguno disponible) -- antes quedaba en "sin descuento" y había que
+      // elegirlo a mano cada vez, aunque solo hubiera una opción.
+      setDescuentoSel(prev => (prev && lista.some(d => d.id === prev) ? prev : (lista[0]?.id ?? null)));
     })();
     return () => { cancelado = true; };
   }, [st.codigoEvento, staff?.id]);
@@ -258,6 +273,13 @@ const Pago: React.FC = () => {
   // avanzar la venta sin escanear/teclear el código de cada boleto.
   const faltanCodigosFisicos = esFisico && codigosFisicos.length < cantidadFisicaMax;
 
+  // Tarjeta física (POS en mano): número de lote y referencia
+  // obligatorios, máximo 6 dígitos cada uno.
+  const esTarjetaFisica = metodo === 'Tarjeta-Local';
+  const DIGITOS_TARJETA = /^\d{1,6}$/;
+  const faltanDatosTarjetaFisica = esTarjetaFisica
+    && (!DIGITOS_TARJETA.test(tarjetaLote) || !DIGITOS_TARJETA.test(tarjetaReferencia));
+
   /* Arranque limpio en CADA entrada a esta pantalla -- Ionic puede
      reactivar una instancia que ya estaba en su stack en vez de montar
      una nueva, así que sin esto el "fase" (venta ya registrada), los
@@ -275,6 +297,8 @@ const Pago: React.FC = () => {
     setEnviarCorreo(true);
     setDunaModo('qr');
     setToast('');
+    setTarjetaLote('');
+    setTarjetaReferencia('');
     setDescuentoSel(null);
     setTipoBoleto('fisico');
     setCodigoFisicoInput('');
@@ -511,8 +535,19 @@ const Pago: React.FC = () => {
       setError('Escanea el código de todos los boletos físicos antes de registrar la venta.');
       return;
     }
+    if (faltanDatosTarjetaFisica) {
+      setError('Ingresa el número de lote y la referencia de la tarjeta (máximo 6 dígitos cada uno).');
+      return;
+    }
     setCargando(true);
     setError('');
+    // Pantalla de "Procesando…" con una duración mínima -- en métodos
+    // locales el POST resuelve casi al instante y antes se saltaba
+    // directo a "Venta registrada" sin transición, sintiéndose abrupto.
+    // Se aplica igual para todos los métodos de pago.
+    setFase('procesando');
+    const inicioRegistro = Date.now();
+    const DURACION_MINIMA_MS = 2000;
     try {
       const payload = {
         id_usuario:  cliente.id || 0,
@@ -548,6 +583,9 @@ const Pago: React.FC = () => {
         // Descuento marcado por el vendedor (uno por venta). El backend
         // revalida (autorización + evento) y recalcula total_pago.
         ...(descuentoSel ? { descuento: { id: descuentoSel } } : {}),
+        // Tarjeta física (POS en mano): número de lote y referencia del
+        // voucher. El backend también los exige/valida para este método.
+        ...(esTarjetaFisica ? { tarjeta_lote: tarjetaLote, tarjeta_referencia: tarjetaReferencia } : {}),
         transaccion: '',
         // "codigo_boletos" ya es una columna existente de registraCompra --
         // misma que llena ModalEfectivo.js en la web con su campo "Agregar
@@ -563,6 +601,9 @@ const Pago: React.FC = () => {
       };
 
       const { data } = await axios.post(`${URL_BASE}/registraCompra`, payload, { headers: API_HDR });
+
+      const restante = DURACION_MINIMA_MS - (Date.now() - inicioRegistro);
+      if (restante > 0) await new Promise(r => setTimeout(r, restante));
 
       if (data.success || data.idRegistro) {
         if (data.url) setUrlPago(data.url);
@@ -585,9 +626,11 @@ const Pago: React.FC = () => {
           if (data.url && !esQrDuna) window.open(data.url, '_system');
         }
       } else {
+        setFase('seleccion');
         setError(data.message ?? 'No se pudo registrar la venta. Intenta de nuevo.');
       }
     } catch (err: unknown) {
+      setFase('seleccion');
       setError(
         axios.isAxiosError(err) && err.response?.data?.message
           ? err.response.data.message
@@ -777,12 +820,21 @@ const Pago: React.FC = () => {
           <IonTitle>
             {fase === 'exito' ? 'Venta registrada'
               : fase === 'comprobante' ? 'Comprobante de depósito'
+              : fase === 'procesando' ? 'Procesando…'
               : 'Confirmar venta'}
           </IonTitle>
         </IonToolbar>
       </IonHeader>
 
       <IonContent className="pago-content">
+
+        {fase === 'procesando' && (
+          <div className="pago-exito pago-procesando">
+            <IonSpinner name="crescent" className="pago-procesando-spinner" />
+            <h2>Procesando tu venta…</h2>
+            <p>Esto toma solo un momento.</p>
+          </div>
+        )}
 
         {fase === 'exito' && (
           <div className="pago-exito">
@@ -1133,6 +1185,41 @@ const Pago: React.FC = () => {
                   </span>
                 </div>
               )}
+
+              {esTarjetaFisica && (
+                <div className="metodo-opciones duna-modo-opciones">
+                  <span className="duna-modo-label">Datos del voucher (POS)</span>
+                  <div className="tarjeta-fisica-campos">
+                    <div className="tarjeta-fisica-campo">
+                      <label>Número de lote</label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        className="comprobante-input"
+                        value={tarjetaLote}
+                        onChange={(e) => setTarjetaLote(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="Ej: 001234"
+                      />
+                    </div>
+                    <div className="tarjeta-fisica-campo">
+                      <label>Referencia</label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        className="comprobante-input"
+                        value={tarjetaReferencia}
+                        onChange={(e) => setTarjetaReferencia(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="Ej: 998877"
+                      />
+                    </div>
+                  </div>
+                  <span className="duna-modo-hint">
+                    Ambos son obligatorios -- van impresos en el voucher de la POS (máximo 6 dígitos).
+                  </span>
+                </div>
+              )}
             </div>
 
             {descuentos.length > 0 && (
@@ -1204,10 +1291,17 @@ const Pago: React.FC = () => {
               </p>
             )}
 
+            {faltanDatosTarjetaFisica && (
+              <p className="pago-error">
+                Ingresa el número de lote y la referencia de la tarjeta (máximo 6 dígitos cada uno) para poder continuar.
+              </p>
+            )}
+
             {error && <p className="pago-error">{error}</p>}
 
             <IonButton expand="block" className="btn-confirmar"
-              onClick={() => setMostrarConfirmacion(true)} disabled={cargando || !metodo || faltanCodigosFisicos}>
+              onClick={() => setMostrarConfirmacion(true)}
+              disabled={cargando || !metodo || faltanCodigosFisicos || faltanDatosTarjetaFisica}>
               {cargando
                 ? <><IonSpinner name="crescent" className="btn-spinner" /> Registrando…</>
                 : `Registrar venta  $${totalACobrar.toFixed(2)}`
@@ -1311,7 +1405,7 @@ const Pago: React.FC = () => {
                 Revisa los datos antes de continuar. Una vez registrada, la venta no se puede deshacer desde aquí.
               </p>
 
-              <IonButton expand="block" className="btn-confirmar" disabled={cargando || faltanCodigosFisicos}
+              <IonButton expand="block" className="btn-confirmar" disabled={cargando || faltanCodigosFisicos || faltanDatosTarjetaFisica}
                 onClick={() => { setMostrarConfirmacion(false); confirmar(); }}>
                 {cargando
                   ? <><IonSpinner name="crescent" className="btn-spinner" /> Registrando…</>
@@ -1319,7 +1413,7 @@ const Pago: React.FC = () => {
               </IonButton>
               <IonButton expand="block" fill="outline" disabled={cargando}
                 onClick={() => setMostrarConfirmacion(false)}>
-                Revisar de nuevo
+                REGRESAR A LA VENTA
               </IonButton>
             </div>
           </IonContent>

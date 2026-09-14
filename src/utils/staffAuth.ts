@@ -14,7 +14,7 @@ const STORAGE_KEY = 'staffToken';
 /* Perfiles que pueden vender (mismo permiso[] que /Vender-Tickets en
    routesub.js de la web). "Aprobar-Ventas" (cola de depósitos) queda
    fuera del alcance de esta app a propósito. */
-export const PERFILES_VENTA = ['admin', 'super_admin', 'vendedores', 'suscriptores'];
+export const PERFILES_VENTA = ['admin', 'super_admin', 'vendedores', 'vendedor_secundario', 'suscriptores'];
 
 export interface StaffData {
   id: number;

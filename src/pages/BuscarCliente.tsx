@@ -89,7 +89,7 @@ const BuscarCliente: React.FC = () => {
       <IonHeader>
         <IonToolbar className="buscar-toolbar">
           <img src={marcaTickets} alt="T-ickets" className="toolbar-logo" />
-          <IonTitle>Buscar Cliente</IonTitle>
+          <IonTitle size="small">Buscar Cliente</IonTitle>
         </IonToolbar>
       </IonHeader>
 

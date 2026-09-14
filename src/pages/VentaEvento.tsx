@@ -7,7 +7,7 @@ import {
 import {
   chevronBackOutline, searchOutline, checkmarkCircleOutline,
   personAddOutline, peopleOutline, chevronForwardOutline,
-  mapOutline, gridOutline, closeOutline,
+  mapOutline, gridOutline, closeOutline, alertCircleOutline,
 } from 'ionicons/icons';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -240,7 +240,32 @@ const VentaEvento: React.FC = () => {
     setCedulaBusqueda('');
     setNombreNuevo(''); setEmailNuevo(''); setMovilNuevo(''); setCiudadNuevo('');
     setFuenteDatos(null);
+    setCompraPendiente(null);
   };
+
+  /* ── Compra pendiente ──
+     Si el cliente ya tiene una orden sin resolver (Pendiente/Comprobar),
+     no se le deja generar otra -- se le muestra esa orden para que la
+     retome en vez de duplicarla. Se consulta apenas se resuelve el
+     cliente (antes de mostrar el paso 2 de localidades). */
+  const [compraPendiente, setCompraPendiente] = useState<{
+    id: number; forma_pago: string; estado_pago: string; total_pago: string;
+    fechaCreacion: string; nombreConcierto: string;
+  } | null>(null);
+  const [verificandoPendiente, setVerificandoPendiente] = useState(false);
+
+  useEffect(() => {
+    if (!cliente) return;
+    setVerificandoPendiente(true);
+    setCompraPendiente(null);
+    axios.get(`${URL_BASE}/compra_pendiente`, {
+      headers: API_HDR,
+      params: { cedula: cliente.cedula, ...(codigoEvento ? { codigoEvento } : {}) },
+    })
+      .then(({ data }) => { if (data?.success && data?.pendiente) setCompraPendiente(data.data); })
+      .catch(() => {})
+      .finally(() => setVerificandoPendiente(false));
+  }, [cliente, codigoEvento]);
 
   /* Arranque limpio en CADA entrada a esta pantalla -- Ionic puede
      reactivar una instancia que ya existía en su stack en vez de montar
@@ -256,6 +281,7 @@ const VentaEvento: React.FC = () => {
     setNombreNuevo(''); setEmailNuevo(''); setMovilNuevo(''); setCiudadNuevo('');
     setFuenteDatos(null);
     setPrecios([]);
+    setCompraPendiente(null);
   });
 
   useEffect(() => {
@@ -381,8 +407,33 @@ const VentaEvento: React.FC = () => {
             {error && <p className="venta-error">{error}</p>}
           </div>
 
+          {/* ── Compra pendiente: bloquea el paso 2 hasta que se resuelva ── */}
+          {cliente && verificandoPendiente && (
+            <div className="venta-card">
+              <div className="loading-precios"><IonSpinner name="crescent" /></div>
+            </div>
+          )}
+
+          {cliente && !verificandoPendiente && compraPendiente && (
+            <div className="venta-card">
+              <h3 className="venta-card-title">
+                <IonIcon icon={alertCircleOutline} /> Compra pendiente
+              </h3>
+              <p className="cliente-nuevo-aviso venta-pendiente-aviso">
+                <IonIcon icon={alertCircleOutline} />
+                Este cliente ya tiene una compra sin resolver ({compraPendiente.estado_pago}) de
+                "{compraPendiente.nombreConcierto}" por ${parseFloat(compraPendiente.total_pago || '0').toFixed(2)}.
+                Resuélvela antes de generar una nueva.
+              </p>
+              <IonButton expand="block" className="btn-crear-cliente"
+                onClick={() => navigate(`/detalle-compra/${compraPendiente.id}`)}>
+                Ver compra pendiente
+              </IonButton>
+            </div>
+          )}
+
           {/* ── Paso 2: localidades ── */}
-          {cliente && (
+          {cliente && !verificandoPendiente && !compraPendiente && (
             <div className="venta-card">
               <h3 className="venta-card-title">
                 <IonIcon icon={peopleOutline} /> Selecciona la localidad

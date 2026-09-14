@@ -9,7 +9,7 @@ import {
 } from 'ionicons/icons';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { staffAuthHeaders } from '../utils/staffAuth';
+import { staffAuthHeaders, logoutStaff } from '../utils/staffAuth';
 import {
   obtenerMetodosPagoActivos, METODOS_CONFIGURABLES, calcularTotalConComision,
   type MetodoPagoActivo,
@@ -81,7 +81,17 @@ const Vender: React.FC = () => {
         );
         setEventos(soloFuturos);
       } else setError('No se pudieron cargar los eventos');
-    } catch {
+    } catch (err) {
+      // El backend responde 401 con sesion_expirada:true cuando el JWT del
+      // vendedor está vencido (dura 1h) -- antes esto también hacía que la
+      // pantalla se quedara sin eventos, pero sin decir por qué. Se manda
+      // a loguearse otra vez en vez de dejarlo viendo un error de conexión
+      // genérico sin saber qué hacer.
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        logoutStaff();
+        navigate('/home', { replace: true });
+        return;
+      }
       setError('Error al conectar con el servidor');
     } finally {
       setCargando(false);
@@ -129,7 +139,7 @@ const Vender: React.FC = () => {
           <IonButtons slot="start">
             <img src={marcaTickets} alt="T-ickets" className="toolbar-logo" />
           </IonButtons>
-          <IonTitle>Vender</IonTitle>
+          <IonTitle size="small">Vender</IonTitle>
         </IonToolbar>
         <IonToolbar className="vender-toolbar">
           <IonSearchbar
