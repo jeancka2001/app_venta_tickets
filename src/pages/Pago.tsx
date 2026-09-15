@@ -18,7 +18,7 @@ import {
   obtenerMetodosPagoActivos, METODOS_CONFIGURABLES, calcularTotalConComision,
   type CategoriaMetodo,
 } from '../utils/metodosPago';
-import { obtenerStaffData } from '../utils/staffAuth';
+import { obtenerStaffData, logoutStaff } from '../utils/staffAuth';
 import { obtenerDescuentosVendedor, aplicarDescuento, type DescuentoVendedor } from '../utils/descuentos';
 import type { Cliente } from './VentaEvento';
 import './Pago.css';
@@ -170,7 +170,31 @@ const Pago: React.FC = () => {
   useEffect(() => {
     let cancelado = false;
     (async () => {
+      // Se relee la sesion aca (no se usa el `staff` de arriba, calculado
+      // una sola vez al montar el componente) porque el JWT dura 1h y el
+      // vendedor puede llevar mas tiempo que eso en esta pantalla: sin este
+      // chequeo, staffAuthHeaders() mandaba el token vencido, el backend no
+      // podia decodificarlo (req.userData quedaba null) y MetodosPagoActivos
+      // trataba la llamada como ANONIMA -- sin restriccion, mostrando TODOS
+      // los metodos aunque el admin le hubiera asignado solo algunos. Ahora
+      // obtenerStaffData() detecta el vencimiento y limpia la sesion sola.
+      const staffVigente = obtenerStaffData();
+      // DEBUG temporal: para ver con que usuario/perfil se esta pidiendo la
+      // lista y si la sesion sigue viva en el momento exacto del fetch.
+      // Quitar cuando se confirme que el filtro por usuario funciona bien.
+      console.log('[Pago] cargando metodos de pago -- staff:', staffVigente, 'codigoEvento:', st.codigoEvento);
+      if (!staffVigente) {
+        if (!cancelado) {
+          console.log('[Pago] sesion vencida o inexistente -- se redirige a /home sin cargar metodos');
+          logoutStaff();
+          setError('Tu sesión expiró. Vuelve a iniciar sesión.');
+          navigate('/home', { replace: true });
+        }
+        return;
+      }
+
       const activos = await obtenerMetodosPagoActivos(st.codigoEvento);
+      console.log('[Pago] metodos que devolvio el backend (ya filtrados por usuario_metodos_pago si aplica):', activos);
       const porMetodo = new Map(activos.map(a => [a.metodo, a]));
       // Se filtra por PRESENCIA en la respuesta de metodos_pago_activos, no
       // por su flag `activo`: si el vendedor tiene métodos restringidos
@@ -189,6 +213,12 @@ const Pago: React.FC = () => {
             desc: pct > 0 ? `+${Math.round(pct * 100)}% comisión` : 'Sin comisión',
           };
         });
+      // DEBUG temporal: la lista final que realmente se pinta en pantalla,
+      // ya cruzada con METODOS_CONFIGURABLES. Si "activos" arriba ya viene
+      // restringido a 5 pero esta lista sigue mostrando mas, el problema
+      // esta en este filtro (o en METODOS_CONFIGURABLES); si "activos" ya
+      // viene con todos, el problema es del backend/guardado, no de la app.
+      console.log('[Pago] lista final mostrada al vendedor:', lista.map(m => m.key));
       if (cancelado) return;
       setMetodosDisponibles(lista);
       setMetodo(prev => prev || lista[0]?.key || '');
@@ -260,6 +290,18 @@ const Pago: React.FC = () => {
       );
     }
   }
+
+  /* Comprobante que se subió pero no se pudo validar automáticamente --
+     el backend igual lo deja en estado "Comprobar" (aprobación manual) sin
+     importar esto, pero la pantalla de éxito NO debe dar a entender que ya
+     quedó aprobado: ni el ícono/título ni el texto pueden decir "venta
+     exitosa"/"pago aprobado" en este caso, tiene que quedar claro que lo
+     revisa contabilidad. */
+  const comprobanteSospechoso = esTransferencia && comprobanteAdjuntado && (
+    !!ocrError || !ocrResultado || ocrAvisos.length > 0 ||
+    !!ocrResultado?.validacion?.posible_adulteracion ||
+    ocrResultado?.validacion?.nivel_sospecha === 'alto'
+  );
 
   // Disponible para cualquier método, no solo los locales.
   const esFisico = tipoBoleto === 'fisico';
@@ -818,7 +860,7 @@ const Pago: React.FC = () => {
             </IonButtons>
           )}
           <IonTitle>
-            {fase === 'exito' ? 'Venta registrada'
+            {fase === 'exito' ? (comprobanteSospechoso ? 'Comprobante en revisión' : 'Venta registrada')
               : fase === 'comprobante' ? 'Comprobante de depósito'
               : fase === 'procesando' ? 'Procesando…'
               : 'Confirmar venta'}
@@ -838,9 +880,10 @@ const Pago: React.FC = () => {
 
         {fase === 'exito' && (
           <div className="pago-exito">
-            <IonIcon icon={checkmarkCircleOutline} className="pago-exito-icon" />
-            <h2>¡Venta registrada!</h2>
-            {!quedaPagadoAlInstante && (
+            <IonIcon icon={comprobanteSospechoso ? warningOutline : checkmarkCircleOutline}
+              className={comprobanteSospechoso ? 'pago-exito-icon pago-exito-icon-aviso' : 'pago-exito-icon'} />
+            <h2>{comprobanteSospechoso ? 'Comprobante en revisión' : '¡Venta registrada!'}</h2>
+            {!quedaPagadoAlInstante && !comprobanteSospechoso && (
               <p className="pago-exito-nota">
                 Los boletos se generarán y los asientos se asignarán automáticamente en cuanto se confirme el pago
                 (puede tardar unos minutos). Al cliente también le llegarán las entradas digitales a su correo.
@@ -864,7 +907,14 @@ const Pago: React.FC = () => {
             {esTransferencia && esFisico && (
               <p>Boleto(s) físico(s) reservado(s) -- se canjeará(n) recién cuando se apruebe el depósito.</p>
             )}
-            {esTransferencia && comprobanteAdjuntado && (
+            {esTransferencia && comprobanteAdjuntado && comprobanteSospechoso && (
+              <p className="pago-exito-aviso-texto">
+                No pudimos validar el comprobante automáticamente (dato faltante, monto/banco que no coincide, o
+                imagen poco clara). La compra va a quedar en proceso hasta que el departamento de contabilidad
+                revise y apruebe el depósito o la transferencia.
+              </p>
+            )}
+            {esTransferencia && comprobanteAdjuntado && !comprobanteSospechoso && (
               <p>El comprobante quedó adjunto y la venta pendiente de aprobación manual.</p>
             )}
             {esTransferencia && !comprobanteAdjuntado && (
@@ -910,6 +960,13 @@ const Pago: React.FC = () => {
                   Copiar link
                 </IonButton>
               </div>
+            )}
+            {idRegistro && (
+              <IonButton expand="block" className="btn-confirmar"
+                onClick={() => navigate(`/detalle-compra/${idRegistro}`)}>
+                <IonIcon icon={receiptOutline} slot="start" />
+                Ver compra
+              </IonButton>
             )}
             <IonButton fill="outline" className="btn-volver-inicio"
               onClick={() => navigate('/dashboard/vender', { replace: true })}>

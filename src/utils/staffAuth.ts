@@ -21,6 +21,9 @@ export interface StaffData {
   name?: string;
   username?: string;
   perfil: string;
+  /* Segundos epoch -- lo agrega jwt.sign() solo por tener expiresIn:'1h'
+     en LoginAdmin.controller.js, no es un campo real de la tabla admin. */
+  exp?: number;
   [k: string]: unknown;
 }
 
@@ -65,14 +68,36 @@ export const loginStaff = async (
   }
 };
 
+/* El JWT dura 1h (ver expiresIn en LoginAdmin.controller.js) y jwt.sign le
+   agrega el claim `exp` (segundos epoch) al payload -- decodificarJWT() ya
+   lo trae. Sin este chequeo, un vendedor que sigue usando la app pasada la
+   hora quedaba con un token vencido en localStorage que la app seguia
+   mandando como si fuera valido: el backend no podia decodificarlo
+   (ValidacionBasic -> req.userData quedaba null) y trataba la llamada como
+   ANONIMA -- mismo criterio permisivo que usa para la tienda publica sin
+   login -- así que CUALQUIER restriccion por usuario (eventos_asignados,
+   usuario_metodos_pago) dejaba de aplicarse en silencio: el vendedor volvia
+   a ver TODOS los eventos/metodos de pago, no los que el admin le asigno. */
+const staffVencido = (staff: StaffData | null): boolean => {
+  const exp = staff && typeof staff.exp === 'number' ? staff.exp : null;
+  return exp !== null && Date.now() >= exp * 1000;
+};
+
 export const obtenerStaffData = (): StaffData | null => {
   const token = localStorage.getItem(STORAGE_KEY);
   if (!token) return null;
   const staff = decodificarJWT(token);
+  if (staff && staffVencido(staff)) {
+    logoutStaff();
+    return null;
+  }
   return staff;
 };
 
-export const obtenerStaffToken = (): string | null => localStorage.getItem(STORAGE_KEY);
+/* Reusa obtenerStaffData() (que ya autolimpia si vencio) para que
+   staffAuthHeaders() nunca mande un JWT vencido como si fuera valido. */
+export const obtenerStaffToken = (): string | null =>
+  obtenerStaffData() ? localStorage.getItem(STORAGE_KEY) : null;
 
 /* Cabeceras para llamadas a ms_login que el backend filtra por usuario
    (listareventos, ListaPreciosLocaDispo/ListaPreciosLocalidades,

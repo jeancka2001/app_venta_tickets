@@ -20,12 +20,20 @@ export const obtenerMetodosPagoActivos = async (codigoEvento?: string): Promise<
     // restricción por usuario (usuario_metodos_pago) si el admin le
     // asignó un subconjunto -- sin esto, cualquier vendedor veía TODOS
     // los métodos activos sin importar lo que se le configuró en la web.
+    const headers = staffAuthHeaders();
+    // DEBUG temporal: para confirmar si el Authorization que se manda es el
+    // JWT del vendedor (session viva) o el token de servicio (sesión vencida
+    // -> obtenerStaffToken() devolvió null -> el backend no puede filtrar por
+    // usuario y responde el catálogo completo). Quitar cuando se confirme.
+    console.log('[metodosPago] GET /metodos_pago_activos -- codigoEvento:', codigoEvento, 'Authorization:', headers.Authorization);
     const { data } = await axios.get(`${URL_BASE}/metodos_pago_activos`, {
-      headers: staffAuthHeaders(),
+      headers,
       params: codigoEvento ? { codigoEvento } : undefined,
     });
+    console.log('[metodosPago] respuesta cruda del backend:', data);
     return Array.isArray(data?.data) ? data.data : [];
-  } catch {
+  } catch (error) {
+    console.log('[metodosPago] ERROR llamando a /metodos_pago_activos:', error);
     return [];
   }
 };

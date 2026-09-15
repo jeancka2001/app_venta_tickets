@@ -728,6 +728,14 @@ const DetalleCompra: React.FC = () => {
             <IonBackButton defaultHref="/dashboard/buscar" text="" />
           </IonButtons>
           <IonTitle>Detalle de compra</IonTitle>
+          <IonButtons slot="end">
+            {/* Para ver el estado actualizado sin salir y volver a entrar --
+                ej. una compra por transferencia que contabilidad acaba de
+                aprobar mientras esta pantalla seguia abierta. */}
+            <IonButton onClick={() => cargar()} disabled={cargando} aria-label="Recargar">
+              <IonIcon icon={refreshOutline} slot="icon-only" />
+            </IonButton>
+          </IonButtons>
         </IonToolbar>
       </IonHeader>
 

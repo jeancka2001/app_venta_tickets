@@ -316,6 +316,17 @@
   padding: 60px 24px;
 }
 .pago-exito-icon { font-size: 72px; color: #27ae60; margin-bottom: 16px; }
+/* Comprobante sin validar (no confundir con la venta exitosa: naranja de
+   aviso, no el verde de éxito) -- ver comprobanteSospechoso en Pago.tsx. */
+.pago-exito-icon-aviso { color: #e67e22; }
+.pago-exito-aviso-texto {
+  background: #fdf1e3;
+  border: 1px solid #f3d3a5;
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: #8a5a1e !important;
+  text-align: left;
+}
 .pago-procesando-spinner { width: 56px; height: 56px; margin-bottom: 16px; --color: #2d358c; }
 .pago-exito h2 { font-size: 1.3rem; font-weight: 700; color: #1a1e52; margin: 0 0 8px; }
 .pago-exito p { font-size: 0.9rem; color: #6b7a90; margin: 0 0 24px; max-width: 320px; }
@@ -426,6 +437,7 @@
 
   .pago-exito h2 { color: #e8ecf5; }
   .pago-exito p  { color: #9da5b4; }
+  .pago-exito-aviso-texto { background: #3a2a12; border-color: #6b4a1e; color: #f0c27b !important; }
   .pago-exito-nota { background: #1e2540; border-color: #3a4a8f; color: #a9bbff !important; }
   .pago-procesando-spinner { --color: #7b8fdc; }
 
