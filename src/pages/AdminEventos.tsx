@@ -5,6 +5,7 @@ import {
 } from '@ionic/react';
 import {
   addOutline, calendarNumberOutline, locationOutline, chevronForwardOutline, barChartOutline, cardOutline,
+  peopleOutline,
 } from 'ionicons/icons';
 import { useNavigate } from 'react-router-dom';
 import { listarEventosAdmin, SesionExpiradaError, type EventoAdmin } from '../utils/adminEventos';
@@ -68,6 +69,9 @@ const AdminEventos: React.FC = () => {
           </IonButtons>
           <IonTitle size="small">Admin · Eventos</IonTitle>
           <IonButtons slot="end">
+            <IonButton onClick={() => navigate('/comisiones')}>
+              <IonIcon icon={peopleOutline} slot="icon-only" />
+            </IonButton>
             <IonButton onClick={() => navigate('/admin/metodos-pago')}>
               <IonIcon icon={cardOutline} slot="icon-only" />
             </IonButton>

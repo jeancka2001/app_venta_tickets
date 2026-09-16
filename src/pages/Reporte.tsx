@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import {
   IonContent, IonHeader, IonPage, IonTitle, IonToolbar,
-  IonButton, IonSpinner, IonText, IonIcon,
+  IonButtons, IonButton, IonSpinner, IonText, IonIcon,
 } from '@ionic/react';
 import {
   statsChartOutline, cashOutline, ticketOutline, receiptOutline,
-  pricetagOutline, calendarNumberOutline, timeOutline,
+  pricetagOutline, calendarNumberOutline, timeOutline, peopleOutline,
 } from 'ionicons/icons';
+import { useNavigate } from 'react-router-dom';
 import { obtenerReporteVentas, UsuarioAgg } from '../utils/reporteVentas';
+import { obtenerReporteComisiones, type FilaComision } from '../utils/comisiones';
 import { obtenerStaffData } from '../utils/staffAuth';
 import marcaTickets from '../images/MARCA_TICKETS.png';
 import './Reporte.css';
@@ -36,8 +38,10 @@ const RANGOS_RAPIDOS = [
 ];
 
 const f2 = (n: number | undefined) => (Number(n) || 0).toFixed(2);
+const pct = (n: number | null | undefined) => (n == null ? '—' : `${n}%`);
 
 const Reporte: React.FC = () => {
+  const navigate = useNavigate();
   const staff = obtenerStaffData();
   const [desde, setDesde] = useState(inicioMesStr());
   const [hasta, setHasta] = useState(hoyStr());
@@ -45,13 +49,23 @@ const Reporte: React.FC = () => {
   const [error, setError] = useState('');
   const [buscado, setBuscado] = useState(false);
   const [miReporte, setMiReporte] = useState<UsuarioAgg | null>(null);
+  // Comisión de VENDEDOR (jerarquía nivel1/nivel2, admin.comision_porcentaje)
+  // -- distinta de "comision_boleto" (la tarifa de la ticketera por boleto,
+  // que ya se mostraba abajo). null = este usuario no tiene ningún rol en
+  // esa jerarquía (no vendedor nivel 1 ni nivel 2) -- se oculta la tarjeta
+  // en vez de mostrar un "$0.00" engañoso.
+  const [comisionPropia, setComisionPropia] = useState<FilaComision | null>(null);
 
   const generar = async (d = desde, h = hasta) => {
     setCargando(true);
     setError('');
     setBuscado(false);
     try {
-      const data = await obtenerReporteVentas(d, h);
+      const [data, comisiones] = await Promise.all([
+        obtenerReporteVentas(d, h),
+        obtenerReporteComisiones(d, h),
+      ]);
+      setComisionPropia(comisiones.success ? (comisiones.data[0] ?? null) : null);
       if (!data.success) {
         setError(data.message ?? 'No se pudo generar el reporte.');
         setMiReporte(null);
@@ -87,6 +101,11 @@ const Reporte: React.FC = () => {
         <IonToolbar className="reporte-toolbar">
           <img src={marcaTickets} alt="T-ickets" className="toolbar-logo" />
           <IonTitle size="small">Mi Reporte</IonTitle>
+          <IonButtons slot="end">
+            <IonButton onClick={() => navigate('/comisiones')}>
+              <IonIcon icon={peopleOutline} slot="icon-only" />
+            </IonButton>
+          </IonButtons>
         </IonToolbar>
       </IonHeader>
 
@@ -156,9 +175,42 @@ const Reporte: React.FC = () => {
                 <div className="kpi-card">
                   <IonIcon icon={pricetagOutline} className="kpi-icon" />
                   <span className="kpi-valor">${f2(miReporte.pagado.comision)}</span>
-                  <span className="kpi-label">Comisión</span>
+                  <span className="kpi-label">Comisión de boleto</span>
                 </div>
               </div>
+
+              {comisionPropia && (
+                <div className="reporte-card">
+                  <h3 className="reporte-card-title">
+                    <IonIcon icon={peopleOutline} /> Mi comisión de vendedor
+                  </h3>
+                  <div className="reporte-fila">
+                    <div className="reporte-fila-info">
+                      <span className="reporte-fila-nombre">Directa (mis ventas)</span>
+                      <span className="reporte-fila-sub">{pct(comisionPropia.comision_porcentaje)} sobre ${f2(comisionPropia.ventas_propias)}</span>
+                    </div>
+                    <span className="reporte-fila-monto">${f2(comisionPropia.comision_directa)}</span>
+                  </div>
+                  {comisionPropia.nivel2.length > 0 && (
+                    <div className="reporte-fila">
+                      <div className="reporte-fila-info">
+                        <span className="reporte-fila-nombre">Por vendedores nivel 2 a mi cargo</span>
+                        <span className="reporte-fila-sub">{comisionPropia.nivel2.length} vendedor(es)</span>
+                      </div>
+                      <span className="reporte-fila-monto">${f2(comisionPropia.comision_nivel1_total)}</span>
+                    </div>
+                  )}
+                  <div className="reporte-fila reporte-fila-total">
+                    <div className="reporte-fila-info">
+                      <span className="reporte-fila-nombre">Total a cobrar</span>
+                    </div>
+                    <span className="reporte-fila-monto">${f2(comisionPropia.comision_total)}</span>
+                  </div>
+                  <IonButton fill="clear" size="small" className="btn-ver-comisiones" onClick={() => navigate('/comisiones')}>
+                    Ver detalle
+                  </IonButton>
+                </div>
+              )}
 
               {otrosCompras > 0 && (
                 <div className="reporte-aviso-otros">

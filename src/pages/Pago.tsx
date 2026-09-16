@@ -407,23 +407,30 @@ const Pago: React.FC = () => {
      a Localidad con su selección de asientos ya vendida/reservada, dejando
      "agregar más asientos" a la MISMA orden ya cerrada. Mientras la fase
      sea 'seleccion' se deja el comportamiento normal (vuelve a Localidad
-     para elegir otro asiento antes de pagar). */
+     para elegir otro asiento antes de pagar).
+
+     Una vez generada la venta, retroceder queda invalidado (no hace nada):
+     - Si la orden quedó PENDIENTE (pasarela/Transferencia/Efectivo-Comnet
+       sin confirmar todavía) se avisa que retroceder la anula, en vez de
+       dejarla huérfana ocupando el asiento para siempre -- este caso SÍ
+       navega, pero recién si el vendedor confirma el aviso.
+     - Si ya quedó pagada (métodos locales) o todavía se está generando
+       (fase 'procesando', antes de que exista idRegistro), el botón atrás
+       no hace absolutamente nada -- para salir hay que usar el botón
+       "Vender otra entrada" a propósito, no queda forma de "regresar". */
   useEffect(() => {
     const handler = (ev: Event) => {
       if (!activoRef.current || faseRef.current === 'seleccion') return;
       const id = idRegistroRef.current;
       const cb = (id && !quedaPagadoAlInstante)
-        // Pasarela/Transferencia/Efectivo-Comnet con la orden todavía sin
-        // confirmar -- se avisa que retroceder la anula, en vez de
-        // dejarla "Pendiente" huérfana ocupando el asiento para siempre.
         ? () => setAlertaAnular({ id })
-        : () => navigate('/dashboard/vender', { replace: true });
+        : () => {};
       (ev as CustomEvent<{ register: (priority: number, cb: () => void) => void }>)
         .detail.register(10, cb);
     };
     document.addEventListener('ionBackButton', handler);
     return () => document.removeEventListener('ionBackButton', handler);
-  }, [navigate, quedaPagadoAlInstante]);
+  }, [quedaPagadoAlInstante]);
 
   /* Busca un código en el inventario de boletos físicos de este evento
      (subido desde Admin > Evento en la web). El boleto impreso es el que
@@ -1337,7 +1344,7 @@ const Pago: React.FC = () => {
               )}
               <div className="pago-divider" />
               <div className="pago-fila pago-total-row">
-                <span>TOTAL A COBRAR</span>
+                <span>TOTAL</span>
                 <span>${totalACobrar.toFixed(2)}</span>
               </div>
             </div>
@@ -1453,7 +1460,7 @@ const Pago: React.FC = () => {
                 )}
                 <div className="pago-divider" />
                 <div className="pago-fila pago-total-row">
-                  <span>TOTAL A COBRAR</span>
+                  <span>TOTAL</span>
                   <span>${totalACobrar.toFixed(2)}</span>
                 </div>
               </div>

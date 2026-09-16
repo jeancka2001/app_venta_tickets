@@ -108,6 +108,44 @@ const Localidad: React.FC = () => {
   const [sel, setSel]             = useState<SillaItem[]>([]);
   const [cantidad, setCantidad]   = useState(1);
   const [zoom, setZoom]           = useState(0.7);
+  /* Pellizcar con dos dedos para acercar/alejar el mapa de sillas/mesas --
+     antes solo se podía con los botones +/-. Reusa el mismo estado `zoom`
+     que ya leen esos botones y el estilo CSS `zoom` de .map-canvas, así que
+     no hace falta tocar nada más del renderizado. Con un solo dedo no se
+     hace nada acá (ni preventDefault ni setPointerCapture) para no romper
+     el scroll nativo de .map-scroll ni el click de cada asiento -- si en
+     algún momento hay 2 punteros activos, se calcula el factor de cambio
+     de distancia entre ellos y se aplica sobre el zoom que había al
+     empezar el gesto (no sobre el zoom actual en cada evento, para que no
+     se acumule error de redondeo). */
+  const pinchPunterosRef = useRef(new Map<number, { x: number; y: number }>());
+  const pinchDistInicioRef = useRef(0);
+  const pinchZoomInicioRef = useRef(1);
+
+  const distanciaEntrePuntos = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+    Math.hypot(a.x - b.x, a.y - b.y);
+
+  const onPinchPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    pinchPunterosRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinchPunterosRef.current.size === 2) {
+      const [a, b] = Array.from(pinchPunterosRef.current.values());
+      pinchDistInicioRef.current = distanciaEntrePuntos(a, b);
+      pinchZoomInicioRef.current = zoom;
+    }
+  };
+  const onPinchPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!pinchPunterosRef.current.has(e.pointerId)) return;
+    pinchPunterosRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinchPunterosRef.current.size === 2 && pinchDistInicioRef.current > 0) {
+      const [a, b] = Array.from(pinchPunterosRef.current.values());
+      const factor = distanciaEntrePuntos(a, b) / pinchDistInicioRef.current;
+      setZoom(Math.min(3, Math.max(0.4, +(pinchZoomInicioRef.current * factor).toFixed(2))));
+    }
+  };
+  const onPinchPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    pinchPunterosRef.current.delete(e.pointerId);
+    if (pinchPunterosRef.current.size < 2) pinchDistInicioRef.current = 0;
+  };
   const [procesando, setProcesando] = useState<Set<number>>(new Set());
   const [toast, setToast]         = useState('');
   const [confirmarSalir, setConfirmarSalir] = useState(false);
@@ -525,7 +563,11 @@ const Localidad: React.FC = () => {
                   <p className="max-warn">Máximo {MAX_SEL} asientos por venta</p>
                 )}
 
-                <div className="map-scroll">
+                <div className="map-scroll"
+                  onPointerDown={onPinchPointerDown}
+                  onPointerMove={onPinchPointerMove}
+                  onPointerUp={onPinchPointerUp}
+                  onPointerCancel={onPinchPointerUp}>
                   {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                   <div className="map-canvas" style={{ zoom } as any}>
 

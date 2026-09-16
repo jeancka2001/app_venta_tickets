@@ -128,6 +128,10 @@
   padding: 10px;
   max-height: 58vh;
   border: 1px solid #d0d8e8;
+  /* Permite el scroll nativo de un dedo pero deja que el pellizco con dos
+     dedos lo maneje nuestro propio handler (onPinchPointer*) en vez de que
+     el navegador haga zoom de toda la página. */
+  touch-action: pan-x pan-y;
 }
 
 .map-canvas {

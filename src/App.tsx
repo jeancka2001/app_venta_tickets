@@ -12,6 +12,7 @@ import AdminEventoDetalle from './pages/AdminEventoDetalle';
 import AdminReportePorUsuario from './pages/AdminReportePorUsuario';
 import AdminLocalidadAsientos from './pages/AdminLocalidadAsientos';
 import AdminMetodosPago from './pages/AdminMetodosPago';
+import Comisiones from './pages/Comisiones';
 import { obtenerStaffData } from './utils/staffAuth';
 
 /* Core CSS required for Ionic components to work properly */
@@ -66,6 +67,7 @@ const App: React.FC = () => (
         <Route path="/localidad/:id" element={<RutaProtegida><Localidad /></RutaProtegida>} />
         <Route path="/pago" element={<RutaProtegida><Pago /></RutaProtegida>} />
         <Route path="/detalle-compra/:id" element={<RutaProtegida><DetalleCompra /></RutaProtegida>} />
+        <Route path="/comisiones" element={<RutaProtegida><Comisiones /></RutaProtegida>} />
         <Route path="/admin/evento-nuevo" element={<RutaAdmin><AdminEventoForm /></RutaAdmin>} />
         <Route path="/admin/evento/:codigoEvento/editar" element={<RutaAdmin><AdminEventoForm /></RutaAdmin>} />
         <Route path="/admin/evento/:codigoEvento" element={<RutaAdmin><AdminEventoDetalle /></RutaAdmin>} />
