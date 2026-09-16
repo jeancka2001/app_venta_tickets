@@ -371,7 +371,7 @@ const AdminEventoDetalle: React.FC = () => {
                         <span className="localidad-precio">${parseFloat(loc.precio_normal || '0').toFixed(2)}</span>
                       </div>
                       <IonIcon icon={abierto ? chevronUpOutline : chevronDownOutline} />
-                    </div>
+                    </div> 
 
                     {!!loc.id_localidad && (loc.tipo_localidad === 'fila' || loc.tipo_localidad === 'mesa') && (
                       <button className="btn-ver-asientos"
