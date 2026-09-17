@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import {
-  IonContent, IonHeader, IonPage, IonTitle, IonToolbar,
+  IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonButtons,
   IonInput, IonButton, IonIcon, IonSpinner, IonText, IonBadge,
 } from '@ionic/react';
-import { searchOutline, chevronForwardOutline, ticketOutline } from 'ionicons/icons';
+import { searchOutline, chevronForwardOutline, ticketOutline, qrCodeOutline } from 'ionicons/icons';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { MS_LOGIN_AUTH_HEADERS } from '../utils/msLoginAuth';
@@ -90,6 +90,11 @@ const BuscarCliente: React.FC = () => {
         <IonToolbar className="buscar-toolbar">
           <img src={marcaTickets} alt="T-ickets" className="toolbar-logo" />
           <IonTitle size="small">Buscar Cliente</IonTitle>
+          <IonButtons slot="end">
+            <IonButton onClick={() => navigate('/escanear-boleto')}>
+              <IonIcon icon={qrCodeOutline} slot="icon-only" />
+            </IonButton>
+          </IonButtons>
         </IonToolbar>
       </IonHeader>
 

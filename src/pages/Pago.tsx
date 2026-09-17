@@ -35,12 +35,36 @@ interface PagoState {
   precio: number;
   cantidad: number;
   idSillas: number[];
+  // Etiqueta cruda de cada asiento en idSillas (mismo orden) -- viene de
+  // Localidad.tsx (sel.map(s => s.silla)). Vacío para correlativo, donde
+  // los asientos recién se conocen después de crear la compra.
+  sillasSeleccionadas?: (string | null)[];
   comisionBoleto: number;
   iva: string;
   cliente: Cliente | null;
 }
 
 interface MetodoItem { key: string; label: string; pct: number; desc: string; categoria: CategoriaMetodo; }
+
+/* "A-s-1" -> "A · Silla 1" (mismo formato que ya usa localidades_items.silla
+   / ticket_usuarios.sillas en toda la app -- ver numeroDeSilla en
+   DetalleCompra.tsx). Si no trae "-s-" (correlativo suelto, o formato
+   raro) se muestra tal cual. */
+const formatearEtiquetaAsiento = (raw?: string | null): string | null => {
+  if (!raw) return null;
+  if (raw.includes('-s-')) {
+    const [grupo, numero] = raw.split('-s-');
+    return numero ? `${grupo} · Silla ${numero}` : grupo;
+  }
+  return raw;
+};
+
+interface ResultadoAsignacionFisica {
+  codigo: string;
+  ok: boolean;
+  mensaje: string;
+  etiqueta?: string | null;
+}
 
 interface OcrExtracto {
   numero_comprobante?: string;
@@ -144,6 +168,11 @@ const Pago: React.FC = () => {
   const [filaAsientoPorCodigo, setFilaAsientoPorCodigo] = useState<Record<string, string>>({});
   const [buscandoCodigo, setBuscandoCodigo] = useState(false);
   const inputFisicoRef = useRef<HTMLInputElement>(null);
+
+  // Resultado real (no "best-effort" silencioso) de vincular cada código
+  // físico escaneado a su asiento/compra, para mostrarlo en la pantalla de
+  // éxito -- ver asignarBoletosFisicosYCanjear.
+  const [resumenFisico, setResumenFisico] = useState<ResultadoAsignacionFisica[]>([]);
 
   /* Transferencia/Depósito: igual que Modalconfirmacion.js en la web, tras
      crear la orden (queda "Pendiente") se pide el comprobante -- banco,
@@ -445,13 +474,29 @@ const Pago: React.FC = () => {
         headers: API_HDR,
         params: { codigoEvento: st.codigoEvento, codigo_barras: codigo },
       });
-      if (data?.success && Array.isArray(data.data) && data.data.length === 1) {
-        const f = data.data[0];
-        setSeccionPorCodigo(prev => ({ ...prev, [codigo]: f.seccion }));
-        setFilaAsientoPorCodigo(prev => ({ ...prev, [codigo]: f.fila_asiento || '' }));
-        setToast(`Boleto encontrado: ${f.seccion}${f.fila_asiento ? ' · ' + f.fila_asiento : ''}`);
-      } else if (data?.success && Array.isArray(data.data) && data.data.length > 1) {
-        setToast(`Ese código existe en ${data.data.length} secciones -- se agrega igual, sin descontar del inventario.`);
+      if (data?.success && Array.isArray(data.data) && data.data.length >= 1) {
+        // Si en CUALQUIERA de las secciones donde existe este código ya
+        // está Vendido/Anulado, se rechaza de una -- desde acá no hay forma
+        // de saber a cuál sección corresponde el impreso que el vendedor
+        // tiene en mano, así que se prefiere el falso positivo ocasional a
+        // vender el mismo código físico dos veces (antes esto no se
+        // revisaba: el código se aceptaba igual y el rechazo real recién
+        // pasaba en el backend DESPUÉS de cobrar, en silencio).
+        const yaUsado = data.data.find((f: { estado?: string }) => f.estado && f.estado !== 'Disponible');
+        if (yaUsado) {
+          quitarCodigoFisico(codigo);
+          const motivo = yaUsado.estado === 'Anulado' ? 'fue anulado' : 'ya fue vendido';
+          setToast(`Este código ${motivo}${yaUsado.id_registraCompra ? ` (compra #${yaUsado.id_registraCompra})` : ''} -- no se puede reutilizar.`);
+          return;
+        }
+        if (data.data.length === 1) {
+          const f = data.data[0];
+          setSeccionPorCodigo(prev => ({ ...prev, [codigo]: f.seccion }));
+          setFilaAsientoPorCodigo(prev => ({ ...prev, [codigo]: f.fila_asiento || '' }));
+          setToast(`Boleto encontrado: ${f.seccion}${f.fila_asiento ? ' · ' + f.fila_asiento : ''}`);
+        } else {
+          setToast(`Ese código existe en ${data.data.length} secciones -- se agrega igual, sin descontar del inventario.`);
+        }
       } else {
         setToast('No se encontró ese código en el inventario -- se agrega igual.');
       }
@@ -557,19 +602,41 @@ const Pago: React.FC = () => {
     // (sin mapa de asientos elegido a mano) se resuelven los asientos que
     // el backend acaba de asignar recién ahora, ya con la compra creada.
     const asientos = st.idSillas?.length ? st.idSillas : await obtenerAsientosCorrelativo(idRegistraCompra);
+    const esCorrelativo = !st.idSillas?.length;
+    const resumen: ResultadoAsignacionFisica[] = [];
     for (let i = 0; i < codigosFisicos.length; i++) {
       const codigo = codigosFisicos[i];
       const seccion = seccionPorCodigo[codigo];
-      if (!seccion) continue; // sin sección resuelta, no hay a qué inventario asignarlo
+      const etiqueta = esCorrelativo
+        ? `Boleto correlativo N.º ${i + 1}`
+        : formatearEtiquetaAsiento(st.sillasSeleccionadas?.[i] ?? null);
+      if (!seccion) {
+        // Sin sección resuelta en el inventario, no hay a qué fila asignarlo.
+        resumen.push({ codigo, ok: false, mensaje: 'No se encontró en el inventario de boletos físicos.', etiqueta });
+        continue;
+      }
       const idAsiento = asientos[i];
       try {
-        await axios.post(`${URL_BASE}/boletos_fisicos/asignar`, {
+        const { data } = await axios.post(`${URL_BASE}/boletos_fisicos/asignar`, {
           codigoEvento: st.codigoEvento, seccion, codigo_barras: codigo,
           id_registraCompra: idRegistraCompra, id_operador: idOperador,
           ...(idAsiento ? { id_localidades_items: idAsiento } : {}),
         }, { headers: API_HDR });
-      } catch { /* best-effort */ }
+        resumen.push({
+          codigo,
+          ok: !!data?.success,
+          mensaje: data?.message || (data?.success ? 'Vinculado correctamente.' : 'No se pudo vincular.'),
+          etiqueta,
+        });
+      } catch {
+        resumen.push({ codigo, ok: false, mensaje: 'Error de conexión al vincular este boleto.', etiqueta });
+      }
     }
+    // A diferencia del "best-effort" de antes (que tragaba cualquier error
+    // en silencio y siempre mostraba éxito), esto se guarda para avisarle
+    // al vendedor cuáles boletos físicos SÍ quedaron vinculados y cuáles no
+    // -- ver el resumen en la pantalla de "Venta registrada".
+    setResumenFisico(resumen);
     if (omitirCanje) return;
     try {
       await axios.post(`${URL_BASE}/canje_boleto`, {
@@ -914,6 +981,27 @@ const Pago: React.FC = () => {
             {esTransferencia && esFisico && (
               <p>Boleto(s) físico(s) reservado(s) -- se canjeará(n) recién cuando se apruebe el depósito.</p>
             )}
+
+            {esFisico && resumenFisico.length > 0 && (
+              <div className="resumen-fisico-card">
+                <h3 className="resumen-fisico-titulo">
+                  <IonIcon icon={resumenFisico.every(r => r.ok) ? checkmarkCircleOutline : warningOutline} />
+                  Vinculación de boletos físicos
+                </h3>
+                {resumenFisico.map(r => (
+                  <div key={r.codigo} className={`resumen-fisico-fila ${r.ok ? 'resumen-fisico-ok' : 'resumen-fisico-error'}`}>
+                    <span className="resumen-fisico-codigo">{r.codigo}{r.etiqueta ? ` · ${r.etiqueta}` : ''}</span>
+                    <span className="resumen-fisico-detalle">{r.ok ? 'Vinculado' : r.mensaje}</span>
+                  </div>
+                ))}
+                {resumenFisico.some(r => !r.ok) && (
+                  <p className="resumen-fisico-aviso">
+                    Corrige los boletos marcados desde "Ver compra" antes de entregarlos al cliente.
+                  </p>
+                )}
+              </div>
+            )}
+
             {esTransferencia && comprobanteAdjuntado && comprobanteSospechoso && (
               <p className="pago-exito-aviso-texto">
                 No pudimos validar el comprobante automáticamente (dato faltante, monto/banco que no coincide, o
@@ -1178,6 +1266,12 @@ const Pago: React.FC = () => {
                       Escanea el código con el lector (o cámara) o tecléalo y presiona Enter.
                       {buscandoCodigo ? ' Buscando…' : ''}
                     </span>
+                    {!!st.sillasSeleccionadas?.length && (
+                      <span className="duna-modo-hint">
+                        El 1.º código escaneado se asigna a la 1.ª silla elegida en el mapa, el 2.º a la 2.ª, y así
+                        sucesivamente -- revisa abajo que cada código quede junto a la silla correcta antes de confirmar.
+                      </span>
+                    )}
                     <div className="fisico-scan-input-row">
                       <input
                         ref={inputFisicoRef}
@@ -1197,14 +1291,20 @@ const Pago: React.FC = () => {
                     </div>
                     {codigosFisicos.length > 0 && (
                       <div className="fisico-chips">
-                        {codigosFisicos.map((c) => (
-                          <span key={c} className="fisico-chip" onClick={() => quitarCodigoFisico(c)}>
-                            {c}
-                            {seccionPorCodigo[c] ? ` · ${seccionPorCodigo[c]}` : ''}
-                            {filaAsientoPorCodigo[c] ? ` · ${filaAsientoPorCodigo[c]}` : ''}
-                            <IonIcon icon={closeCircleOutline} />
-                          </span>
-                        ))}
+                        {codigosFisicos.map((c, i) => {
+                          const etiquetaAsiento = formatearEtiquetaAsiento(st.sillasSeleccionadas?.[i] ?? null);
+                          const infoFisico = [seccionPorCodigo[c], filaAsientoPorCodigo[c]].filter(Boolean).join(' · ');
+                          return (
+                            <span key={c} className="fisico-chip" onClick={() => quitarCodigoFisico(c)}>
+                              <span className="fisico-chip-texto">
+                                <span className="fisico-chip-codigo">{c}</span>
+                                {etiquetaAsiento && <span className="fisico-chip-asiento">→ {etiquetaAsiento}</span>}
+                                {infoFisico && <span className="fisico-chip-info">Impreso: {infoFisico}</span>}
+                              </span>
+                              <IonIcon icon={closeCircleOutline} />
+                            </span>
+                          );
+                        })}
                       </div>
                     )}
                     {esLocal ? (

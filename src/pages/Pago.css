@@ -159,16 +159,61 @@
 .fisico-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 5px 8px;
-  border-radius: 8px;
+  gap: 6px;
+  padding: 6px 9px;
+  border-radius: 10px;
   background: #eef0fb;
   color: #2d358c;
   font-size: 0.76rem;
   font-weight: 600;
   cursor: pointer;
 }
-.fisico-chip ion-icon { font-size: 0.95rem; }
+.fisico-chip ion-icon { font-size: 0.95rem; flex-shrink: 0; }
+.fisico-chip-texto { display: flex; flex-direction: column; gap: 1px; }
+.fisico-chip-codigo { font-weight: 700; }
+.fisico-chip-asiento { font-weight: 800; font-size: 0.72rem; color: #1a6b3c; }
+.fisico-chip-info { font-weight: 500; font-size: 0.7rem; color: #6b7a90; }
+
+/* ── Resumen real de vinculación de boletos físicos (pantalla de éxito) ── */
+.resumen-fisico-card {
+  width: 100%;
+  max-width: 340px;
+  background: #f4f6fb;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 16px;
+  text-align: left;
+}
+.resumen-fisico-titulo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #1a1e52;
+  margin: 0 0 10px;
+}
+.resumen-fisico-fila {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid #e0e5f0;
+  font-size: 0.78rem;
+}
+.resumen-fisico-fila:last-of-type { border-bottom: none; }
+.resumen-fisico-codigo { font-weight: 700; color: #1a1e52; }
+.resumen-fisico-detalle { font-weight: 600; flex-shrink: 0; text-align: right; }
+.resumen-fisico-ok .resumen-fisico-detalle { color: #1a6b3c; }
+.resumen-fisico-error .resumen-fisico-detalle { color: #c0392b; }
+.resumen-fisico-aviso {
+  font-size: 0.75rem;
+  color: #c0392b;
+  font-weight: 600;
+  margin: 10px 0 0;
+  text-align: left;
+}
 
 .pago-error {
   font-size: 0.82rem;
@@ -427,7 +472,17 @@
   .metodo-desc   { color: #9da5b4; }
   .metodo-opciones { border-top-color: #2a3050; color: #e8ecf5; }
   .fisico-chip     { background: #1e2540; color: #7b8fdc; }
+  .fisico-chip-asiento { color: #4ade80; }
+  .fisico-chip-info { color: #9da5b4; }
   .btn-escanear-camara { --border-color: #7b8fdc; --color: #7b8fdc; }
+
+  .resumen-fisico-card    { background: #1e2540; }
+  .resumen-fisico-titulo  { color: #e8ecf5; }
+  .resumen-fisico-fila    { border-bottom-color: #2a3050; }
+  .resumen-fisico-codigo  { color: #e8ecf5; }
+  .resumen-fisico-ok .resumen-fisico-detalle    { color: #4ade80; }
+  .resumen-fisico-error .resumen-fisico-detalle { color: #f87171; }
+  .resumen-fisico-aviso   { color: #f87171; }
 
   .duna-modo-label { color: #9da5b4; }
   .duna-modo-item  { border-color: #2a3050; color: #9da5b4; }

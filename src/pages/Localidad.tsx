@@ -672,6 +672,11 @@ const Localidad: React.FC = () => {
                 precio,
                 cantidad:        cantCarrito,
                 idSillas:        tipo === 'correlativo' ? [] : sel.map(s => s.idsilla),
+                // Etiqueta cruda de cada asiento elegido (mismo orden que
+                // idSillas) -- solo para que Pago.tsx pueda mostrarle al
+                // vendedor a qué silla/mesa se le va a asignar cada boleto
+                // físico que escanee, antes de confirmar la venta.
+                sillasSeleccionadas: tipo === 'correlativo' ? [] : sel.map(s => s.silla ?? s.numero ?? null),
                 comisionBoleto:  parseFloat(st.comisionBoleto || '0'),
                 iva:             st.iva || '1.00',
                 cliente,

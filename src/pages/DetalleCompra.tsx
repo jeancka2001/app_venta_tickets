@@ -447,6 +447,7 @@ const DetalleCompra: React.FC = () => {
   };
 
   const [alertaAsientoExistente, setAlertaAsientoExistente] = useState<{ codigo: string; seccion: string; filaAsiento: string } | null>(null);
+  const [resumenAsignacionFisica, setResumenAsignacionFisica] = useState<{ codigo: string; ok: boolean; mensaje: string }[] | null>(null);
 
   const buscarBoletoFisicoExistente = async (codigo: string, indiceBoleto: number) => {
     const codigoEvento = registro?.info_concierto?.[0]?.CODIGEVENTO || '';
@@ -457,17 +458,33 @@ const DetalleCompra: React.FC = () => {
         headers: API_HDR,
         params: { codigoEvento, codigo_barras: codigo },
       });
-      if (data?.success && Array.isArray(data.data) && data.data.length === 1) {
-        const f = data.data[0];
-        const sillas = boletos[indiceBoleto]?.sillas;
-        if (sillas && !coincideConAsientoExistente(f.fila_asiento, sillas)) {
-          setAlertaAsientoExistente({ codigo, seccion: f.seccion, filaAsiento: f.fila_asiento || '' });
+      if (data?.success && Array.isArray(data.data) && data.data.length >= 1) {
+        // Si en CUALQUIERA de las secciones donde existe este código ya
+        // está Vendido/Anulado, se rechaza de una -- antes esto no se
+        // revisaba y el código se dejaba agregado igual, para recién
+        // fallar en silencio en el backend al confirmar (ver
+        // confirmarBoletoFisicoExistente). Se prefiere el falso positivo
+        // ocasional (código repetido en otra sección) a reutilizar un
+        // boleto físico que ya pertenece a otra compra.
+        const yaUsado = data.data.find((f: { estado?: string }) => f.estado && f.estado !== 'Disponible');
+        if (yaUsado) {
+          quitarCodigoFisicoExistente(codigo);
+          const motivo = yaUsado.estado === 'Anulado' ? 'fue anulado' : 'ya fue vendido';
+          setToast(`Este código ${motivo}${yaUsado.id_registraCompra ? ` en la compra #${yaUsado.id_registraCompra}` : ''} -- no se puede reutilizar.`);
           return;
         }
-        setSeccionPorCodigoNuevo(prev => ({ ...prev, [codigo]: f.seccion }));
-        setToast(`Boleto encontrado: ${f.seccion}${f.fila_asiento ? ' · ' + f.fila_asiento : ''}`);
-      } else if (data?.success && Array.isArray(data.data) && data.data.length > 1) {
-        setToast(`Ese código existe en ${data.data.length} secciones -- se agrega igual, sin descontar del inventario.`);
+        if (data.data.length === 1) {
+          const f = data.data[0];
+          const sillas = boletos[indiceBoleto]?.sillas;
+          if (sillas && !coincideConAsientoExistente(f.fila_asiento, sillas)) {
+            setAlertaAsientoExistente({ codigo, seccion: f.seccion, filaAsiento: f.fila_asiento || '' });
+            return;
+          }
+          setSeccionPorCodigoNuevo(prev => ({ ...prev, [codigo]: f.seccion }));
+          setToast(`Boleto encontrado: ${f.seccion}${f.fila_asiento ? ' · ' + f.fila_asiento : ''}`);
+        } else {
+          setToast(`Ese código existe en ${data.data.length} secciones -- se agrega igual, sin descontar del inventario.`);
+        }
       } else {
         setToast('No se encontró ese código en el inventario -- se agrega igual.');
       }
@@ -535,6 +552,11 @@ const DetalleCompra: React.FC = () => {
     const hayAlguno = codigosFisicosNuevos.some(c => seccionPorCodigoNuevo[c]);
     if (!hayAlguno) { setToast('Ningún código coincidió con una sección del inventario.'); return; }
     setProcesando('boleto-fisico');
+    // A diferencia de antes (que siempre mostraba "asignado" sin revisar la
+    // respuesta de cada código, incluso cuando el backend lo rechazaba por
+    // ya estar vendido), acá se guarda el resultado REAL de cada uno para
+    // poder avisarle al vendedor si algo no quedó vinculado.
+    const resumen: { codigo: string; ok: boolean; mensaje: string }[] = [];
     try {
       const codigoEvento = registro.info_concierto?.[0]?.CODIGEVENTO || '';
       const idOperador = staff?.id || 0;
@@ -546,22 +568,34 @@ const DetalleCompra: React.FC = () => {
       for (let i = 0; i < codigosFisicosNuevos.length; i++) {
         const codigo = codigosFisicosNuevos[i];
         const seccion = seccionPorCodigoNuevo[codigo];
-        if (!seccion) continue;
+        if (!seccion) {
+          resumen.push({ codigo, ok: false, mensaje: 'Sin sección resuelta en el inventario.' });
+          continue;
+        }
         const idAsiento = boletos[i]?.id_localidades_items;
-        await axios.post(`${URL_BASE}/boletos_fisicos/asignar`, {
-          codigoEvento, seccion, codigo_barras: codigo,
-          id_registraCompra: registro.id, id_operador: idOperador,
-          ...(idAsiento ? { id_localidades_items: idAsiento } : {}),
-        }, { headers: API_HDR });
+        try {
+          const { data } = await axios.post(`${URL_BASE}/boletos_fisicos/asignar`, {
+            codigoEvento, seccion, codigo_barras: codigo,
+            id_registraCompra: registro.id, id_operador: idOperador,
+            ...(idAsiento ? { id_localidades_items: idAsiento } : {}),
+          }, { headers: API_HDR });
+          resumen.push({ codigo, ok: !!data?.success, mensaje: data?.message || (data?.success ? 'Vinculado.' : 'No se pudo vincular.') });
+        } catch {
+          resumen.push({ codigo, ok: false, mensaje: 'Error de conexión al vincular este código.' });
+        }
       }
       await axios.post(`${URL_BASE}/canje_boleto`, {
         id_registraCompra: registro.id, canjeado: 'CANJEADO', id_operador: idOperador, id_usuario: 0,
       }, { headers: API_HDR });
-      setToast('Boleto(s) físico(s) asignado(s) y compra canjeada.');
       setMostrarBoletoFisico(false);
       setCodigosFisicosNuevos([]);
       setSeccionPorCodigoNuevo({});
       await cargar();
+      if (resumen.every(r => r.ok)) {
+        setToast('Boleto(s) físico(s) asignado(s) y compra canjeada.');
+      } else {
+        setResumenAsignacionFisica(resumen);
+      }
     } catch {
       setToast('Error de conexión al asignar el boleto físico.');
     } finally {
@@ -1022,6 +1056,12 @@ const DetalleCompra: React.FC = () => {
                       Escanea el código con el lector (o cámara) o tecléalo y presiona Enter.
                       {buscandoCodigoFisico ? ' Buscando…' : ''}
                     </span>
+                    {boletos.length > 0 && (
+                      <span className="comprobante-hint-compartir">
+                        El 1.º código escaneado reemplaza el QR del 1.º boleto digital de esta compra, el 2.º al 2.º,
+                        y así -- revisa abajo que cada código quede junto al boleto correcto.
+                      </span>
+                    )}
                     <div className="fisico-scan-input-row">
                       <input
                         ref={inputFisicoRef}
@@ -1040,9 +1080,13 @@ const DetalleCompra: React.FC = () => {
                     </div>
                     {codigosFisicosNuevos.length > 0 && (
                       <div className="fisico-chips">
-                        {codigosFisicosNuevos.map((c) => (
+                        {codigosFisicosNuevos.map((c, i) => (
                           <span key={c} className="fisico-chip" onClick={() => quitarCodigoFisicoExistente(c)}>
-                            {c}{seccionPorCodigoNuevo[c] ? ` · ${seccionPorCodigoNuevo[c]}` : ''}
+                            <span className="fisico-chip-texto">
+                              <span className="fisico-chip-codigo">{c}</span>
+                              {boletos[i]?.sillas && <span className="fisico-chip-asiento">→ {boletos[i].sillas}</span>}
+                              {seccionPorCodigoNuevo[c] && <span className="fisico-chip-info">Impreso: {seccionPorCodigoNuevo[c]}</span>}
+                            </span>
                             <IonIcon icon={closeCircleOutline} />
                           </span>
                         ))}
@@ -1196,6 +1240,16 @@ const DetalleCompra: React.FC = () => {
             },
           },
         ]}
+      />
+
+      <IonAlert
+        isOpen={!!resumenAsignacionFisica}
+        header="Vinculación de boletos físicos"
+        message={resumenAsignacionFisica
+          ? resumenAsignacionFisica.map(r => `${r.ok ? '✓' : '✗'} ${r.codigo}: ${r.ok ? 'vinculado' : r.mensaje}`).join('<br>')
+          : ''}
+        buttons={[{ text: 'Entendido', handler: () => setResumenAsignacionFisica(null) }]}
+        onDidDismiss={() => setResumenAsignacionFisica(null)}
       />
 
       <IonModal isOpen={!!imagenModal} onDidDismiss={() => setImagenModal(null)}
