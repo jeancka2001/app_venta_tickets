@@ -44,13 +44,21 @@
 .admin-lbl { font-size: 0.8rem; color: #6b7a90; }
 .admin-val { font-size: 0.82rem; font-weight: 600; color: #1a1e52; text-align: right; }
 
-.admin-botones-fila { display: flex; gap: 8px; margin-top: 12px; }
+/* Grilla de 2 columnas en vez de una sola fila flex: con 4 botones (Editar,
+   Cambiar estado, Registros, Descuentos) el texto no entraba en 4 columnas
+   angostas de ancho igual y se veía apretado/cortado. */
+.admin-botones-fila {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
 .btn-admin-accion {
   --border-radius: 10px;
   --border-color: #1a1e52;
   --color: #1a1e52;
-  flex: 1;
   font-weight: 600;
+  font-size: 0.82rem;
   margin: 0;
 }
 

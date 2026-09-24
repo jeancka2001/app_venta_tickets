@@ -35,14 +35,17 @@ const arrayBufferABase64 = (buffer: ArrayBuffer): string => {
   return btoa(binario);
 };
 
-/* OJO: el handler real (ExportarRegistros en cron_speed_ticktes) no
-   filtra por el :id que se le manda -- devuelve TODOS los registros de
-   compra del sistema, no solo los de este evento. Es el mismo botón que
-   ya usa la web con la misma limitación; se deja documentado acá para no
-   sorprender a quien lo use esperando un archivo ya filtrado. */
-export const descargarReporteEventoExcel = async (idEvento: number): Promise<{ ok: boolean; base64?: string; mensaje?: string }> => {
+/* Mismo botón "Descargar registros" que Evetoespecifico.js en la web -- y
+   ahí SÍ manda el codigoEvento (string, ej. "EMHNKL"), no el id numérico:
+   el handler (ExportarRegistros en cron_speed_ticktes) filtra por
+   FechaPagoLink, que pese al nombre guarda el codigoEvento (ver comentario
+   "Aquí va el código del evento" en eventoModle.js). Antes esta función
+   mandaba el id numérico del evento -- nunca coincidía con FechaPagoLink
+   (columna de texto), así que el filtro no aplicaba de verdad y el Excel
+   podía traer registros de otros eventos o quedar vacío según el caso. */
+export const descargarReporteEventoExcel = async (codigoEvento: string): Promise<{ ok: boolean; base64?: string; mensaje?: string }> => {
   try {
-    const { data } = await axios.get(`${URL_MIKROTIV2}/api/reporte_evento/${idEvento}`, {
+    const { data } = await axios.get(`${URL_MIKROTIV2}/api/reporte_evento/${encodeURIComponent(codigoEvento)}`, {
       responseType: 'arraybuffer',
     });
     return { ok: true, base64: arrayBufferABase64(data as ArrayBuffer) };

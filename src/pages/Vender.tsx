@@ -235,7 +235,7 @@ const Vender: React.FC = () => {
                                     .map(m => {
                                       const cfg = metodos.find(a => a.metodo === m.key);
                                       const pct = cfg?.comision_porcentaje ?? m.pctDefault;
-                                      const { total } = calcularTotalConComision(precioNum, 1, comBoleto, ivaRate, pct);
+                                      const { total } = calcularTotalConComision(precioNum, 1, comBoleto, ivaRate, pct, cfg?.aplica_comision_boleto ?? true);
                                       return (
                                         <div key={m.key} className="precio-metodo-fila">
                                           <span className="precio-metodo-nombre">{m.label}</span>

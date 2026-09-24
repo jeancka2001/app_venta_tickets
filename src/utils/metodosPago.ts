@@ -11,6 +11,13 @@ export interface MetodoPagoActivo {
   metodo: string;
   activo: boolean;
   comision_porcentaje: number;
+  // Si el admin restringió, por evento, en qué métodos se cobra la
+  // comisión de la ticketera (comision_boleto, ~$1 fijo por boleto --
+  // ver ComisionBoletoPanel.js en TicketsWeb y
+  // comision_boleto_metodos_evento en MS-LOGIN-BOLETERIA). El backend ya
+  // resuelve este valor server-side; sin restricción configurada para el
+  // evento, siempre viene en true (mismo default de siempre).
+  aplica_comision_boleto: boolean;
 }
 
 export const obtenerMetodosPagoActivos = async (codigoEvento?: string): Promise<MetodoPagoActivo[]> => {
@@ -127,10 +134,14 @@ export const calcularTotalConComision = (
   cantidad: number,
   comisionBoletoUnitario: number,
   ivaRate: number,
-  pctComisionBancaria: number
+  pctComisionBancaria: number,
+  // Compuerta para la comisión de boletería según la restricción por
+  // evento+método (aplica_comision_boleto) -- true por defecto para no
+  // romper a los llamadores que todavía no la pasan.
+  aplicaComisionBoleto: boolean = true
 ): DesgloseTotal => {
   const subtotal = precioUnitario * cantidad;
-  const comisionServicio = comisionBoletoUnitario * cantidad;
+  const comisionServicio = aplicaComisionBoleto ? comisionBoletoUnitario * cantidad : 0;
   const ivaImporte = subtotal * ivaRate;
   const comisionBancaria = (subtotal + ivaImporte) * pctComisionBancaria;
   return {

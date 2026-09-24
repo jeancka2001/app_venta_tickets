@@ -1,0 +1,241 @@
+.admin-toolbar {
+  --background: #1a1e52;
+  --color: #ffffff;
+  --border-color: transparent;
+}
+.admin-toolbar ion-back-button { --color: #ffffff; }
+
+.admin-content { --background: #f4f6fb; }
+
+.descuentos-container {
+  padding: 16px 16px 40px;
+  max-width: 540px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 3px 12px rgba(15, 52, 96, 0.08);
+}
+
+.admin-card-titulo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #9da5b4;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin: 0 0 12px;
+}
+
+.admin-loading-mini { display: flex; justify-content: center; padding: 16px 0; }
+.admin-sin-datos { font-size: 0.8rem; color: #6b7a90; margin: 0; line-height: 1.4; }
+
+/* ── Intro + botón nuevo ── */
+.descuentos-intro p { font-size: 0.82rem; color: #6b7a90; line-height: 1.5; margin: 0 0 12px; }
+.btn-nuevo-descuento {
+  --background: #2d358c;
+  --background-activated: #1a1e52;
+  --color: #ffffff;
+  --border-radius: 10px;
+  font-weight: 700;
+  margin: 0;
+}
+
+/* ── Formulario ── */
+.descuento-form { border: 1px dashed #c5cfe0; }
+.descuento-campo { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.descuento-campo:last-of-type { margin-bottom: 0; }
+.descuento-campo > label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #6b7a90;
+}
+.descuento-campo ion-checkbox { --checkbox-background-checked: #2d358c; --border-color-checked: #2d358c; margin-right: 8px; }
+.descuento-campo ion-checkbox small { color: #9da5b4; font-weight: 500; }
+
+.descuento-radio {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 0;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #1a1e52;
+}
+.descuento-radio input { margin-top: 3px; flex-shrink: 0; }
+.descuento-radio small { display: block; color: #9da5b4; font-weight: 500; margin-top: 1px; }
+
+.descuento-usuarios-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.badge-conteo { --background: #2d358c; --color: #ffffff; margin-left: 6px; font-size: 0.65rem; }
+.descuento-usuarios-acciones { display: flex; gap: 10px; }
+.descuento-usuarios-acciones button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #2d358c;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.descuento-usuarios-acciones .link-peligro { color: #e74c3c; }
+
+.descuento-buscar-usuario {
+  border: 1px solid #d9dee8;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.82rem;
+  color: #1a1e52;
+  background: #ffffff;
+}
+
+.descuento-usuarios-lista {
+  border: 1px solid #eceff6;
+  border-radius: 10px;
+  padding: 6px 10px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.descuento-usuario-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  cursor: pointer;
+  font-size: 0.83rem;
+  color: #1a1e52;
+}
+.descuento-usuario-item small { color: #9da5b4; }
+.descuento-usuario-item ion-checkbox { --checkbox-background-checked: #2d358c; --border-color-checked: #2d358c; }
+
+.descuento-usuarios-error { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.descuento-usuarios-error small { color: #e74c3c; }
+.descuento-usuarios-error button {
+  border: 1px solid #c5cfe0;
+  background: none;
+  border-radius: 8px;
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  color: #2d358c;
+  cursor: pointer;
+}
+
+.texto-tenue { color: #9da5b4; font-size: 0.78rem; display: block; margin-top: 6px; }
+
+.descuento-form-acciones { display: flex; gap: 8px; margin-top: 16px; }
+.btn-localidad-guardar {
+  --background: #2d358c;
+  --background-activated: #1a1e52;
+  --color: #ffffff;
+  --border-radius: 8px;
+  flex: 1;
+  font-weight: 700;
+  margin: 0;
+}
+.btn-localidad-eliminar-outline {
+  --border-color: #9da5b4;
+  --color: #6b7a90;
+  --border-radius: 8px;
+  margin: 0;
+}
+
+/* ── Tarjeta de cada descuento ── */
+.descuento-item { display: flex; flex-direction: column; gap: 10px; }
+.descuento-item-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.descuento-item-titulos { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.descuento-item-nombre { font-size: 0.92rem; font-weight: 700; color: #1a1e52; }
+.descuento-item-motivo { font-size: 0.74rem; color: #9da5b4; }
+.descuento-item-pct { font-size: 1rem; font-weight: 800; color: #2d358c; flex-shrink: 0; }
+
+.descuento-item-badges { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.badge-sobre-base { --background: #e2f0fe; --color: #0b5cab; font-size: 0.65rem; font-weight: 700; }
+.badge-sobre-final { --background: #eef0fb; --color: #2d358c; font-size: 0.65rem; font-weight: 700; }
+
+.badge-activo-btn {
+  border: none;
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+}
+.badge-activo-btn.activo { background: #d4f1dd; color: #155724; }
+.badge-activo-btn.inactivo { background: #f0f0f0; color: #6b7a90; }
+.badge-activo-btn ion-spinner { width: 12px; height: 12px; }
+
+.descuento-item-fila {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: #6b7a90;
+}
+.descuento-item-fila ion-icon { font-size: 0.95rem; flex-shrink: 0; color: #9da5b4; }
+
+.descuento-item-acciones { display: flex; gap: 8px; margin-top: 4px; }
+.btn-admin-accion {
+  --border-radius: 10px;
+  --border-color: #1a1e52;
+  --color: #1a1e52;
+  flex: 1;
+  font-weight: 600;
+  margin: 0;
+}
+.btn-descuento-eliminar {
+  --border-radius: 10px;
+  --border-color: #e74c3c;
+  --color: #e74c3c;
+  flex: 1;
+  font-weight: 600;
+  margin: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .admin-content { --background: #101624; }
+  .admin-card { background: #1a2035; box-shadow: 0 3px 12px rgba(0,0,0,.4); }
+  .admin-card-titulo { color: #6b7a90; }
+  .admin-sin-datos { color: #9da5b4; }
+
+  .descuentos-intro p { color: #9da5b4; }
+  .descuento-form { border-color: #3a4160; }
+  .descuento-campo > label { color: #9da5b4; }
+  .descuento-radio { color: #e8ecf5; }
+  .descuento-radio small { color: #6b7a90; }
+
+  .descuento-usuarios-acciones button { color: #7b8fdc; }
+  .descuento-buscar-usuario { background: #222840; border-color: #2a3050; color: #e8ecf5; }
+  .descuento-usuarios-lista { border-color: #2a3050; }
+  .descuento-usuario-item { color: #e8ecf5; }
+  .descuento-usuario-item small { color: #9da5b4; }
+  .descuento-usuarios-error button { border-color: #3a4160; color: #7b8fdc; }
+  .texto-tenue { color: #6b7a90; }
+
+  .btn-localidad-guardar { --background: #2d358c; }
+  .btn-localidad-eliminar-outline { --border-color: #6b7a90; --color: #9da5b4; }
+
+  .descuento-item-nombre { color: #e8ecf5; }
+  .descuento-item-motivo { color: #6b7a90; }
+  .descuento-item-pct { color: #7b8fdc; }
+  .badge-sobre-base { --background: #0e2540; --color: #5fb3f7; }
+  .badge-sobre-final { --background: #1e2540; --color: #7b8fdc; }
+  .badge-activo-btn.activo { background: #0e2a18; color: #4ade80; }
+  .badge-activo-btn.inactivo { background: #1e2540; color: #6b7a90; }
+  .descuento-item-fila { color: #9da5b4; }
+  .descuento-item-fila ion-icon { color: #6b7a90; }
+  .btn-admin-accion { --border-color: #7b8fdc; --color: #7b8fdc; }
+  .btn-descuento-eliminar { --border-color: #f87171; --color: #f87171; }
+}

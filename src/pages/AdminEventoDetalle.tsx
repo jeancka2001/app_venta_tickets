@@ -8,7 +8,7 @@ import {
   createOutline, swapHorizontalOutline, trashOutline,
   saveOutline, chevronDownOutline, chevronUpOutline,
   downloadOutline, listOutline, closeOutline, gridOutline, searchOutline,
-  alertCircleOutline, documentTextOutline,
+  alertCircleOutline, documentTextOutline, pricetagsOutline,
 } from 'ionicons/icons';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Filesystem, Directory } from '@capacitor/filesystem';
@@ -272,7 +272,7 @@ const AdminEventoDetalle: React.FC = () => {
     if (!evento) return;
     setDescargandoExcel(true);
     try {
-      const resultado = await descargarReporteEventoExcel(evento.id);
+      const resultado = await descargarReporteEventoExcel(evento.codigoEvento);
       if (!resultado.ok || !resultado.base64) {
         setToast(resultado.mensaje ?? 'No se pudo descargar el reporte.');
         return;
@@ -345,9 +345,13 @@ const AdminEventoDetalle: React.FC = () => {
                   onClick={descargarExcel} disabled={descargandoExcel}>
                   {descargandoExcel ? <IonSpinner name="crescent" /> : <><IonIcon icon={documentTextOutline} slot="start" /> Registros (Excel)</>}
                 </IonButton>
+                <IonButton fill="outline" size="small" className="btn-admin-accion"
+                  onClick={() => navigate(`/admin/evento/${evento.codigoEvento}/descuentos`)}>
+                  <IonIcon icon={pricetagsOutline} slot="start" /> Descuentos
+                </IonButton>
               </div>
               <p className="admin-form-hint">
-                El Excel de registros incluye TODAS las compras del sistema, no solo de este evento (limitación del reporte, igual en la web).
+                El Excel de registros incluye las compras pagadas de este evento (mismo reporte que "Descargar registros" en la página admin).
               </p>
             </div>
 

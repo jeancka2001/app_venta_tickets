@@ -44,7 +44,7 @@ interface PagoState {
   cliente: Cliente | null;
 }
 
-interface MetodoItem { key: string; label: string; pct: number; desc: string; categoria: CategoriaMetodo; }
+interface MetodoItem { key: string; label: string; pct: number; desc: string; categoria: CategoriaMetodo; aplicaComisionBoleto: boolean; }
 
 /* "A-s-1" -> "A · Silla 1" (mismo formato que ya usa localidades_items.silla
    / ticket_usuarios.sillas en toda la app -- ver numeroDeSilla en
@@ -236,10 +236,15 @@ const Pago: React.FC = () => {
       const lista: MetodoItem[] = METODOS_CONFIGURABLES
         .filter(m => activos.length === 0 || porMetodo.has(m.key))
         .map(m => {
-          const pct = porMetodo.get(m.key)?.comision_porcentaje ?? m.pctDefault;
+          const cfg = porMetodo.get(m.key);
+          const pct = cfg?.comision_porcentaje ?? m.pctDefault;
           return {
             key: m.key, label: m.label, pct, categoria: m.categoria,
             desc: pct > 0 ? `+${Math.round(pct * 100)}% comisión` : 'Sin comisión',
+            // Sin dato del backend (fallo de red, o catálogo completo sin
+            // codigoEvento) se asume true -- mismo default que ya usa el
+            // backend cuando el evento no tiene restricción configurada.
+            aplicaComisionBoleto: cfg?.aplica_comision_boleto ?? true,
           };
         });
       // DEBUG temporal: la lista final que realmente se pinta en pantalla,
@@ -271,7 +276,7 @@ const Pago: React.FC = () => {
   }, [st.codigoEvento, staff?.id]);
 
   const met = metodosDisponibles?.find(x => x.key === metodo)
-    ?? { key: '', label: '', pct: 0, desc: '', categoria: 'local' as CategoriaMetodo };
+    ?? { key: '', label: '', pct: 0, desc: '', categoria: 'local' as CategoriaMetodo, aplicaComisionBoleto: true };
   const esLocal = met.categoria === 'local';
   const esTransferencia = met.categoria === 'transferencia';
   const esDuna = met.key === 'Duna';
@@ -290,16 +295,39 @@ const Pago: React.FC = () => {
   const comBoleto   = Number(st.comisionBoleto || 0);
   const ivaRate      = parseFloat((st.iva || '1.00').replace('1.', '0.'));
 
-  const { subtotal, comisionServicio, ivaImporte, comisionBancaria, total } =
-    calcularTotalConComision(precioNum, cantidadNum, comBoleto, ivaRate, met.pct);
-
-  /* `total` es el bruto (lo que va en valores.total; el backend le aplica
-     el % del descuento). `totalACobrar` es lo que realmente paga el
-     cliente -- se usa para mostrar y para el chequeo del OCR. */
+  /* Mismo criterio que GetValores() en TicketsWeb (CarritoLocalStorang.js):
+     un descuento puede ir "sobre precio base" (el % se resta del precio
+     del boleto ANTES de IVA/comisión bancaria, que se recalculan sobre ese
+     precio ya reducido -- la comisión de boletería, monto fijo por boleto,
+     no cambia) o "sobre precio final" (default: el % se resta recién del
+     total ya armado, más abajo). Antes esta app SIEMPRE asumía "final" sin
+     mirar aplica_sobre -- un descuento configurado "sobre base" mostraba un
+     total con descuento en pantalla, pero el backend (que en ese modo
+     confía en que el frontend ya redujo el precio) no descontaba nada: el
+     cliente terminaba pagando el total bruto completo. */
   const descuentoActivo = descuentos.find(d => d.id === descuentoSel) ?? null;
-  const { neto: totalACobrar, monto: montoDescuento } = descuentoActivo
-    ? aplicarDescuento(total, descuentoActivo.porcentaje)
-    : { neto: total, monto: 0 };
+  const aplicaSobreBase = descuentoActivo?.aplica_sobre === 'base';
+  const precioParaCalculo = (aplicaSobreBase && descuentoActivo)
+    ? precioNum * (1 - descuentoActivo.porcentaje / 100)
+    : precioNum;
+
+  const { subtotal, comisionServicio, ivaImporte, comisionBancaria, total } =
+    calcularTotalConComision(precioParaCalculo, cantidadNum, comBoleto, ivaRate, met.pct, met.aplicaComisionBoleto);
+
+  /* `total`: en modo "base" ya sale NETO -- va tal cual en valores.total y
+     el backend no lo vuelve a tocar (RegistraCompra.controller.js confía en
+     que el frontend ya lo redujo). En modo "final" (o sin descuento) sigue
+     siendo el BRUTO -- el backend aplica el % él mismo sobre ese valor.
+     `totalACobrar` es lo que realmente paga el cliente -- se usa para
+     mostrar y para el chequeo del OCR. `montoDescuento` siempre compara
+     contra el total SIN descuento, para mostrar el ahorro real en
+     cualquiera de los dos modos. */
+  const totalACobrar = aplicaSobreBase
+    ? total
+    : (descuentoActivo ? aplicarDescuento(total, descuentoActivo.porcentaje).neto : total);
+  const montoDescuento = (aplicaSobreBase && descuentoActivo)
+    ? Math.round(((precioNum - precioParaCalculo) * cantidadNum + Number.EPSILON) * 100) / 100
+    : (descuentoActivo ? aplicarDescuento(total, descuentoActivo.porcentaje).monto : 0);
 
   /* Verificación local del comprobante leído por OCR contra lo que
      debería depositarse: el backend solo avisa de posible adulteración
@@ -688,7 +716,10 @@ const Pago: React.FC = () => {
           id_sillas:           st.idSillas        || [],
         }],
         valores: {
-          // total = bruto (sin descuento); el backend aplica el % y guarda el neto.
+          // Si el descuento aplica sobre precio final (default o sin
+          // descuento): total = bruto, el backend aplica el % y guarda el
+          // neto. Si aplica sobre precio base: total ya sale neto desde acá
+          // (ver aplicaSobreBase arriba) y el backend NO lo vuelve a tocar.
           total:             total.toFixed(2),
           comision:          comisionServicio.toFixed(2),
           subtotal:          subtotal.toFixed(2),
@@ -1439,7 +1470,14 @@ const Pago: React.FC = () => {
               {descuentoActivo && (
                 <div className="pago-fila">
                   <span className="pago-lbl">Descuento ({descuentoActivo.nombre} −{descuentoActivo.porcentaje}%)</span>
-                  <span className="pago-val">−${montoDescuento.toFixed(2)}</span>
+                  {/* En modo "base" el Subtotal/IVA/Comisión de arriba YA salen
+                      calculados sobre el precio reducido -- mostrar acá también
+                      el monto en $ haría que la suma visible de las filas no
+                      cuadre con TOTAL (se estaría restando dos veces). Solo se
+                      resta como línea aparte en modo "final" (el de siempre). */}
+                  <span className="pago-val">
+                    {aplicaSobreBase ? 'Incluido arriba' : `−$${montoDescuento.toFixed(2)}`}
+                  </span>
                 </div>
               )}
               <div className="pago-divider" />
@@ -1555,7 +1593,11 @@ const Pago: React.FC = () => {
                 {descuentoActivo && (
                   <div className="pago-fila">
                     <span className="pago-lbl">Descuento ({descuentoActivo.nombre} −{descuentoActivo.porcentaje}%)</span>
-                    <span className="pago-val">−${montoDescuento.toFixed(2)}</span>
+                    {/* Mismo criterio que arriba: en modo "base" ya está
+                        reflejado en Subtotal/IVA/Comisión, no se resta de nuevo. */}
+                    <span className="pago-val">
+                      {aplicaSobreBase ? 'Incluido arriba' : `−$${montoDescuento.toFixed(2)}`}
+                    </span>
                   </div>
                 )}
                 <div className="pago-divider" />

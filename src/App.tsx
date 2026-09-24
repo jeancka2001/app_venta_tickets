@@ -12,6 +12,7 @@ import AdminEventoDetalle from './pages/AdminEventoDetalle';
 import AdminReportePorUsuario from './pages/AdminReportePorUsuario';
 import AdminLocalidadAsientos from './pages/AdminLocalidadAsientos';
 import AdminMetodosPago from './pages/AdminMetodosPago';
+import AdminDescuentos from './pages/AdminDescuentos';
 import Comisiones from './pages/Comisiones';
 import EscanearBoleto from './pages/EscanearBoleto';
 import { obtenerStaffData } from './utils/staffAuth';
@@ -76,6 +77,7 @@ const App: React.FC = () => (
         <Route path="/admin/reporte-usuarios" element={<RutaAdmin><AdminReportePorUsuario /></RutaAdmin>} />
         <Route path="/admin/metodos-pago" element={<RutaAdmin><AdminMetodosPago /></RutaAdmin>} />
         <Route path="/admin/evento/:codigoEvento/localidad/:idLocalidad/asientos" element={<RutaAdmin><AdminLocalidadAsientos /></RutaAdmin>} />
+        <Route path="/admin/evento/:codigoEvento/descuentos" element={<RutaAdmin><AdminDescuentos /></RutaAdmin>} />
         <Route path="/" element={<Navigate to="/home" replace />} />
       </IonRouterOutlet>
     </IonReactRouter>
