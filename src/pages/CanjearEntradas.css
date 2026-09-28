@@ -1,0 +1,185 @@
+/* Reutiliza .escaneo-toolbar, .escaneo-content, .toolbar-logo, .btn-camara,
+   .escaneo-inicio, etc. de EscanearBoleto.css (importado en CanjearEntradas.tsx). */
+
+.canje-container {
+  padding: 16px;
+  max-width: 540px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.canje-scan-bar { display: flex; gap: 8px; align-items: center; }
+.canje-input {
+  flex: 1;
+  height: 46px;
+  border: 1px solid #d9dee8;
+  border-radius: 10px;
+  padding: 0 14px;
+  font-size: 0.9rem;
+  color: #1a1e52;
+  background: #ffffff;
+}
+.canje-input:disabled { opacity: 0.6; }
+.canje-input:focus { outline: none; border-color: #2d358c; box-shadow: 0 0 0 3px rgba(45, 53, 140, 0.15); }
+
+.btn-teclado {
+  --border-color: #2d358c;
+  --color: #2d358c;
+  --border-radius: 10px;
+  height: 46px;
+  width: 46px;
+  margin: 0;
+}
+.btn-teclado-activo { --background: #2d358c; --color: #ffffff; }
+
+.canje-toggle { font-size: 0.78rem; color: #6b7a90; --track-background-checked: #2d358c; }
+
+/* ── Avisos ── */
+.canje-aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 12px 12px 14px;
+  border-radius: 12px;
+  border: 2px solid;
+  animation: canje-aviso-entrar 0.2s ease-out;
+}
+.aviso-rojo     { background: #fdecea; border-color: #e53935; color: #8e1b17; }
+.aviso-amarillo { background: #fff8e1; border-color: #f5a623; color: #7a4f00; }
+.aviso-verde    { background: #e8f7ee; border-color: #2e9e5b; color: #17603a; }
+.canje-aviso-icono { font-size: 1.8rem; flex-shrink: 0; }
+.canje-aviso-texto { flex: 1; display: flex; flex-direction: column; gap: 2px; font-size: 0.85rem; }
+.canje-aviso-texto strong { font-size: 0.98rem; }
+.canje-aviso-cerrar {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 1.3rem;
+  padding: 0;
+  cursor: pointer;
+}
+@keyframes canje-aviso-entrar {
+  from { transform: scale(0.96); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+.canje-consultando { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #6b7a90; }
+
+/* ── Lista ── */
+.canje-lista-titulo { font-size: 0.8rem; font-weight: 600; color: #6b7a90; text-transform: uppercase; letter-spacing: 0.03em; }
+.canje-lista { display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px; }
+.canje-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 12px 12px 12px 14px;
+  border-left: 5px solid #2d358c;
+  box-shadow: 0 1px 6px rgba(15, 52, 96, 0.06);
+}
+.item-canjeado   { border-left-color: #2e9e5b; }
+.item-yaCanjeado,
+.item-error      { border-left-color: #e53935; background: #fff5f4; }
+.canje-item-info { flex: 1; min-width: 0; }
+.canje-item-titulo { font-weight: 700; color: #1a1e52; font-size: 0.95rem; }
+.canje-item-sub { font-size: 0.78rem; color: #6b7a90; word-break: break-all; }
+.canje-item-quitar {
+  background: transparent;
+  border: none;
+  color: #9da5b4;
+  font-size: 1.3rem;
+  padding: 0;
+  cursor: pointer;
+}
+
+.canje-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.chip-pendiente { background: #eef0fa; color: #2d358c; }
+.chip-canjeado  { background: #e8f7ee; color: #17603a; }
+.chip-rechazado { background: #fdecea; color: #c62828; }
+
+/* ── Footer ── */
+.canje-footer { background: #ffffff; padding: 10px 16px calc(10px + var(--ion-safe-area-bottom, 0px)); }
+.canje-footer-doble { display: flex; gap: 10px; }
+.canje-footer-doble ion-button { flex: 1; }
+.btn-canjear {
+  --background: #2e9e5b;
+  --background-activated: #237a46;
+  --border-radius: 12px;
+  --color: #ffffff;
+  font-weight: 700;
+  height: 50px;
+  margin: 0;
+}
+.btn-cancelar-canje {
+  --border-color: #9da5b4;
+  --color: #4a5070;
+  --border-radius: 12px;
+  font-weight: 600;
+  height: 50px;
+  margin: 0;
+}
+.canje-confirmar-texto { font-size: 0.92rem; color: #1a1e52; margin: 0; }
+
+/* ── Órdenes de compra ── */
+.canje-ordenes-hint { font-size: 0.76rem; color: #9da5b4; margin: -6px 0 0; }
+.canje-ordenes { display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px; }
+.canje-orden {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  background: #ffffff;
+  border: 1px solid #dfe2f2;
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: #1a1e52;
+  cursor: pointer;
+  box-shadow: 0 1px 6px rgba(15, 52, 96, 0.06);
+}
+.canje-orden:active { background: #eef0fa; }
+.canje-orden-icono { font-size: 1.6rem; color: #2d358c; flex-shrink: 0; }
+.canje-orden-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; font-size: 0.78rem; color: #6b7a90; }
+.canje-orden-info strong { font-size: 0.95rem; color: #1a1e52; }
+
+/* ── Modo canjear / descanjear ── */
+.canje-modo-toolbar { --background: #2d358c; --border-color: transparent; padding: 0 12px 8px; }
+.canje-modo { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
+.canje-modo ion-segment-button {
+  --color: rgba(255, 255, 255, 0.8);
+  --color-checked: #2d358c;
+  --indicator-color: #ffffff;
+  --border-radius: 8px;
+  min-height: 40px;
+  font-weight: 600;
+  text-transform: none;
+}
+.canje-modo-descanje ion-segment-button { --color-checked: #c2410c; }
+
+.item-descanjeado { border-left-color: #c2410c; }
+.item-noCanjeado  { border-left-color: #f5a623; background: #fffbf0; }
+.chip-descanjeado { background: #fff1e8; color: #c2410c; }
+.chip-aviso       { background: #fff8e1; color: #7a4f00; }
+
+.btn-descanjear {
+  --background: #c2410c;
+  --background-activated: #9a3412;
+  --border-radius: 12px;
+  --color: #ffffff;
+  font-weight: 700;
+  height: 50px;
+  margin: 0;
+}
+.canje-motivo { margin-top: 4px; }

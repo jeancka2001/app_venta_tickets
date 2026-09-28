@@ -5,8 +5,9 @@ import {
 } from '@ionic/react';
 import {
   qrCodeOutline, scanOutline, copyOutline, personOutline, cardOutline,
-  mailOutline, callOutline, locationOutline, checkmarkCircleOutline,
+  mailOutline, callOutline, locationOutline, checkmarkCircleOutline, checkmarkDoneOutline,
 } from 'ionicons/icons';
+import { useNavigate } from 'react-router-dom';
 import { escanearBoletoFisico } from '../utils/barcodeScanner';
 import { obtenerInfoBoleto, type ResultadoInfoBoleto, type InfoBoletoAsiento } from '../utils/infoBoleto';
 import { METODOS_CONFIGURABLES } from '../utils/metodosPago';
@@ -53,6 +54,7 @@ const descripcionAsiento = (d: InfoBoletoAsiento): string => {
 };
 
 const EscanearBoleto: React.FC = () => {
+  const navigate = useNavigate();
   const [codigoInput, setCodigoInput] = useState('');
   const [buscando, setBuscando] = useState(false);
   const [error, setError] = useState('');
@@ -247,6 +249,10 @@ const EscanearBoleto: React.FC = () => {
             </IonButton>
           </div>
           <p className="escaneo-hint">Escanea con la cámara o el lector, o teclea el código y presiona Enter.</p>
+          <IonButton fill="outline" size="small" onClick={() => navigate('/canjear-entradas')}>
+            <IonIcon icon={checkmarkDoneOutline} slot="start" />
+            Canjear una o varias entradas
+          </IonButton>
 
           {error && <p className="escaneo-error">{error}</p>}
 

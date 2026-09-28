@@ -36,7 +36,9 @@ export const escanearBoletoFisico = async (): Promise<ResultadoEscaneo> => {
     const valor = barcodes[0]?.displayValue || barcodes[0]?.rawValue;
     if (!valor) return { ok: false, mensaje: 'No se detectó ningún código.' };
     return { ok: true, codigo: valor };
-  } catch {
+  } catch (err) {
+    // El usuario cerró la cámara sin escanear: no es un error.
+    if (/cancel/i.test(String((err as Error)?.message ?? err))) return { ok: false };
     return { ok: false, mensaje: 'No se pudo abrir la cámara.' };
   }
 };

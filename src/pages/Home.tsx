@@ -14,6 +14,7 @@ import {
   guardadoBiometricoNoSoportado,
 } from '../utils/biometricAuth';
 import marcaTickets from '../images/MARCA_TICKETS.png';
+import { LegalLinks } from '../components/Legal';
 import './Home.css';
 
 const Home: React.FC = () => {
@@ -201,6 +202,8 @@ const Home: React.FC = () => {
               </IonButton>
             </div>
           </div>
+
+          <LegalLinks claro />
         </div>
 
         <IonToast

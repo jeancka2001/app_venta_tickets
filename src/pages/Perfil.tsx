@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { obtenerStaffData, logoutStaff } from '../utils/staffAuth';
 import { eliminarCredencialesBiometricas } from '../utils/biometricAuth';
 import marcaTickets from '../images/MARCA_TICKETS.png';
+import { LegalLinks } from '../components/Legal';
 import './Perfil.css';
 
 const Perfil: React.FC = () => {
@@ -58,6 +59,7 @@ const Perfil: React.FC = () => {
             <IonIcon icon={logOutOutline} slot="start" />
             Cerrar Sesión
           </IonButton>
+          <LegalLinks />
         </div>
       </IonContent>
 
