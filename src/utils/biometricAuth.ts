@@ -55,8 +55,11 @@ export interface ResultadoGuardadoBiometrico {
 
 /* Traduce el código de error del plugin (ver BiometricAuthError en sus
    definitions.d.ts) a un mensaje entendible. Los códigos de "el usuario
-   canceló a propósito" no generan mensaje — no hay nada que avisar ahí. */
-const CODIGOS_SIN_AVISO = new Set(['11', '15', '16', '17']); // APP/SYSTEM/USER cancel, USER_FALLBACK
+   canceló a propósito" no generan mensaje — no hay nada que avisar ahí.
+   Tampoco los de "este teléfono no puede usar huella" (sin sensor, sin
+   huellas registradas, sin bloqueo de pantalla): ahí simplemente se entra
+   con usuario y contraseña, sin mostrar ningún error. */
+const CODIGOS_SIN_AVISO = new Set(['1', '3', '11', '14', '15', '16', '17']);
 
 const MENSAJES_ERROR_BIOMETRIA: Record<string, string> = {
   '0': 'No se pudo proteger tu acceso con huella en este dispositivo (posible cambio reciente en las huellas registradas del teléfono). Intenta cerrar la app por completo y vuelve a intentarlo la próxima vez que inicies sesión.',

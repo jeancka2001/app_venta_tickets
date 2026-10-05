@@ -1,0 +1,75 @@
+.lock-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 24px;
+  background: linear-gradient(160deg, #1a1e52 0%, #1b2a4a 50%, #2d358c 100%);
+}
+
+.lock-logo {
+  width: 160px;
+  max-width: 60vw;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+}
+
+.lock-card {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 32px 24px 24px;
+  width: 100%;
+  max-width: 380px;
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+.lock-icon {
+  font-size: 2.4rem;
+  color: #2d358c;
+  margin-bottom: 8px;
+}
+
+.lock-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1a1e52;
+  margin: 0 0 4px;
+}
+
+.lock-sub {
+  font-size: 0.9rem;
+  color: #6b7a90;
+  margin: 0 0 24px;
+}
+
+.lock-btn-huella {
+  --background: #2d358c;
+  --background-activated: #1a1e52;
+  --background-hover: #3d45b0;
+  --border-radius: 10px;
+  --color: #ffffff;
+  font-weight: 600;
+  height: 50px;
+  margin-bottom: 8px;
+}
+
+.lock-btn-clave {
+  --color: #2d358c;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .lock-card {
+    background: #1a2035;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  }
+  .lock-title { color: #e8ecf5; }
+  .lock-sub { color: #9da5b4; }
+  .lock-btn-clave { --color: #7b8fdc; }
+}

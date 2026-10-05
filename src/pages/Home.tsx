@@ -15,6 +15,7 @@ import {
 } from '../utils/biometricAuth';
 import marcaTickets from '../images/MARCA_TICKETS.png';
 import { LegalLinks } from '../components/Legal';
+import { useAppLock } from '../context/AppLockContext';
 import './Home.css';
 
 const Home: React.FC = () => {
@@ -25,6 +26,7 @@ const Home: React.FC = () => {
   const [cargando, setCargando]     = useState(false);
   const [error, setError]           = useState('');
   const [avisoHuella, setAvisoHuella] = useState('');
+  const { sesionIniciada } = useAppLock();
 
   /* ── Huella digital ── (mismo mecanismo probado en app_tickets)
      Nada automático: la huella solo se pide si el vendedor toca el botón
@@ -34,6 +36,7 @@ const Home: React.FC = () => {
   const [confirmarReemplazo, setConfirmarReemplazo] = useState<{ usuario: string; contrasena: string } | null>(null);
 
   const finalizarLogin = (esperarMs: number) => {
+    sesionIniciada();
     if (esperarMs) setTimeout(() => navigate('/dashboard/vender', { replace: true }), esperarMs);
     else navigate('/dashboard/vender', { replace: true });
   };
@@ -52,7 +55,10 @@ const Home: React.FC = () => {
         return;
       }
 
-      if (guardar && !guardadoBiometricoNoSoportado()) {
+      /* Solo se intenta guardar con huella si el teléfono realmente la
+         tiene disponible — en teléfonos sin sensor/sin huellas se entra
+         normal, sin intentar nada (antes mostraba un error de huella). */
+      if (guardar && !guardadoBiometricoNoSoportado() && (await biometriaDisponible())) {
         const yaHabiaGuardada = await hayCredencialesGuardadas();
         if (yaHabiaGuardada) {
           /* Ya hay una cuenta con huella guardada en este teléfono — no se

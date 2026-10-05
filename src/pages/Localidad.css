@@ -128,9 +128,7 @@
   padding: 10px;
   max-height: 58vh;
   border: 1px solid #d0d8e8;
-  /* Permite el scroll nativo de un dedo pero deja que el pellizco con dos
-     dedos lo maneje nuestro propio handler (onPinchPointer*) en vez de que
-     el navegador haga zoom de toda la página. */
+  /* El pellizco con dos dedos lo maneja usePinchZoom, no el navegador. */
   touch-action: pan-x pan-y;
 }
 
@@ -325,4 +323,11 @@
   --border-radius: 10px; --color: #ffffff;
   --padding-start: 22px; --padding-end: 22px;
   font-weight: 700; height: 40px; margin: 0;
+}
+/* Mientras carga la asignación: mismo botón en naranja oscuro, sin
+   transparencia ni ruedita de carga — solo no responde al toque. */
+.btn-pay.button-disabled {
+  --background: #a8520c;
+  --color: rgba(255, 255, 255, 0.85);
+  opacity: 1;
 }

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { MS_LOGIN_AUTH_HEADERS } from './msLoginAuth';
+import { biometriaActivaLocalmente } from './biometricAuth';
 
 /* Login de personal (vendedores/admin/suscriptores-revendedores) — es un
    login DISTINTO al de clientes de app_tickets: pega contra /auth_admin
@@ -10,6 +11,15 @@ const URL_BASE = 'https://api.t-ickets.com/ms_login/api/v1';
 const API_HDR = { ...MS_LOGIN_AUTH_HEADERS, 'Content-Type': 'application/json' };
 
 const STORAGE_KEY = 'staffToken';
+
+/* La sesión venció sola (JWT de 1 h) en un teléfono con login por huella:
+   en vez de mandar al login, se pide la huella una vez y se renueva el
+   token con las credenciales guardadas (ver LockScreen). */
+const KEY_POR_RENOVAR = 'staffPorRenovar';
+
+/* Se bloquea un poco antes de que venza el token, para renovarlo sin que
+   ninguna pantalla llegue a recibir el 401 y saque al vendedor de donde está. */
+const MARGEN_RENOVACION_MS = 2 * 60 * 1000;
 
 /* Perfiles que pueden vender (mismo permiso[] que /Vender-Tickets en
    routesub.js de la web). "Aprobar-Ventas" (cola de depósitos) queda
@@ -49,7 +59,7 @@ const decodificarJWT = (token: string): StaffData | null => {
 export const loginStaff = async (
   username: string,
   password: string
-): Promise<{ success: boolean; data?: StaffData; message?: string }> => {
+): Promise<{ success: boolean; data?: StaffData; message?: string; sinConexion?: boolean }> => {
   try {
     const { data } = await axios.post(
       `${URL_BASE}/auth_admin`,
@@ -60,11 +70,12 @@ export const loginStaff = async (
       const staff = decodificarJWT(data.token);
       if (!staff) return { success: false, message: 'No se pudo leer la sesión.' };
       localStorage.setItem(STORAGE_KEY, data.token);
+      localStorage.removeItem(KEY_POR_RENOVAR);
       return { success: true, data: staff };
     }
     return { success: false, message: data.message ?? 'Usuario o contraseña incorrectos.' };
   } catch {
-    return { success: false, message: 'Error de conexión. Verifica tu internet e intenta de nuevo.' };
+    return { success: false, sinConexion: true, message: 'Error de conexión. Verifica tu internet e intenta de nuevo.' };
   }
 };
 
@@ -116,8 +127,23 @@ export const staffAuthHeaders = (): Record<string, string> => {
   };
 };
 
-export const logoutStaff = (): void => {
+/* renovable=true (por defecto): la sesión se cae por vencimiento/401 —
+   si hay huella guardada, se ofrece renovarla con la huella.
+   renovable=false: el usuario cerró sesión a propósito. */
+export const logoutStaff = ({ renovable = true }: { renovable?: boolean } = {}): void => {
+  const habiaSesion = !!localStorage.getItem(STORAGE_KEY);
   localStorage.removeItem(STORAGE_KEY);
+  if (!renovable) localStorage.removeItem(KEY_POR_RENOVAR);
+  else if (habiaSesion && biometriaActivaLocalmente()) localStorage.setItem(KEY_POR_RENOVAR, '1');
+};
+
+/* Hay que pedir la huella para renovar: ya venció, o está por vencer. */
+export const sesionStaffPorRenovar = (): boolean => {
+  if (!biometriaActivaLocalmente()) return false;
+  if (localStorage.getItem(KEY_POR_RENOVAR) === '1') return true;
+  const token = localStorage.getItem(STORAGE_KEY);
+  const exp = token ? decodificarJWT(token)?.exp : undefined;
+  return typeof exp === 'number' && exp * 1000 - Date.now() < MARGEN_RENOVACION_MS;
 };
 
 export const puedeVender = (perfil?: string): boolean =>

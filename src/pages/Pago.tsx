@@ -11,6 +11,7 @@ import {
   shareSocialOutline, barcodeOutline, closeCircleOutline, closeOutline,
 } from 'ionicons/icons';
 import { Share } from '@capacitor/share';
+import { sinBloqueo } from '../utils/bloqueoSesion';
 import { escanearBoletoFisico } from '../utils/barcodeScanner';
 import axios from 'axios';
 import { MS_LOGIN_AUTH_HEADERS } from '../utils/msLoginAuth';
@@ -843,12 +844,12 @@ const Pago: React.FC = () => {
   const compartirLink = async () => {
     if (!urlPago) return;
     try {
-      await Share.share({
+      await sinBloqueo(() => Share.share({
         title: 'Link de pago',
         text: mensajePago(),
         url: urlPago,
         dialogTitle: 'Compartir link de pago',
-      });
+      }));
     } catch (e) {
       if (e instanceof Error && /cancel/i.test(e.message)) return;
       setToast('No se pudo abrir el menú de compartir.');

@@ -68,6 +68,21 @@
 .item-label { font-size: 0.75rem; color: #9da5b4; margin: 0 0 2px; display: block; }
 .item-value { font-size: 0.9rem; color: #1a1e52; font-weight: 500; margin: 0; }
 
+/* Fila tocable (bloqueo de sesión): mismo aspecto que .perfil-item */
+.perfil-item-accion {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.perfil-item-texto { flex: 1; min-width: 0; }
+.perfil-item-icono { font-size: 1.2rem; color: #2d358c; flex-shrink: 0; }
+
 .perfil-logout { padding: 24px 16px 32px; }
 .btn-logout {
   --background: #fff;
@@ -85,5 +100,6 @@
   .perfil-item  { border-bottom-color: #2a3050; }
   .item-label   { color: #6b7a90; }
   .item-value   { color: #e8ecf5; }
+  .perfil-item-icono { color: #7b8fdc; }
   .btn-logout   { --background: #1e1010; --background-activated: #2a0e0e; --color: #f87171; --box-shadow: none; }
 }

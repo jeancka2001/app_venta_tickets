@@ -12,6 +12,7 @@ import { MS_LOGIN_AUTH_HEADERS } from '../utils/msLoginAuth';
 import { obtenerStaffData } from '../utils/staffAuth';
 import type { Cliente } from './VentaEvento';
 import ZoomableImage from '../components/ZoomableImage';
+import { usePinchZoom, ZOOM_MAX, ZOOM_MIN } from '../utils/usePinchZoom';
 import './Localidad.css';
 
 /* Adaptado de app_tickets/src/pages/Localidad.tsx: mismo mapa de asientos,
@@ -108,44 +109,10 @@ const Localidad: React.FC = () => {
   const [sel, setSel]             = useState<SillaItem[]>([]);
   const [cantidad, setCantidad]   = useState(1);
   const [zoom, setZoom]           = useState(0.7);
-  /* Pellizcar con dos dedos para acercar/alejar el mapa de sillas/mesas --
-     antes solo se podía con los botones +/-. Reusa el mismo estado `zoom`
-     que ya leen esos botones y el estilo CSS `zoom` de .map-canvas, así que
-     no hace falta tocar nada más del renderizado. Con un solo dedo no se
-     hace nada acá (ni preventDefault ni setPointerCapture) para no romper
-     el scroll nativo de .map-scroll ni el click de cada asiento -- si en
-     algún momento hay 2 punteros activos, se calcula el factor de cambio
-     de distancia entre ellos y se aplica sobre el zoom que había al
-     empezar el gesto (no sobre el zoom actual en cada evento, para que no
-     se acumule error de redondeo). */
-  const pinchPunterosRef = useRef(new Map<number, { x: number; y: number }>());
-  const pinchDistInicioRef = useRef(0);
-  const pinchZoomInicioRef = useRef(1);
-
-  const distanciaEntrePuntos = (a: { x: number; y: number }, b: { x: number; y: number }) =>
-    Math.hypot(a.x - b.x, a.y - b.y);
-
-  const onPinchPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    pinchPunterosRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pinchPunterosRef.current.size === 2) {
-      const [a, b] = Array.from(pinchPunterosRef.current.values());
-      pinchDistInicioRef.current = distanciaEntrePuntos(a, b);
-      pinchZoomInicioRef.current = zoom;
-    }
-  };
-  const onPinchPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!pinchPunterosRef.current.has(e.pointerId)) return;
-    pinchPunterosRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pinchPunterosRef.current.size === 2 && pinchDistInicioRef.current > 0) {
-      const [a, b] = Array.from(pinchPunterosRef.current.values());
-      const factor = distanciaEntrePuntos(a, b) / pinchDistInicioRef.current;
-      setZoom(Math.min(3, Math.max(0.4, +(pinchZoomInicioRef.current * factor).toFixed(2))));
-    }
-  };
-  const onPinchPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    pinchPunterosRef.current.delete(e.pointerId);
-    if (pinchPunterosRef.current.size < 2) pinchDistInicioRef.current = 0;
-  };
+  /* Pellizco con dos dedos: ver usePinchZoom (touch events). */
+  const mapScrollRef = useRef<HTMLDivElement>(null);
+  /* Correlativo: hay un +/− esperando respuesta del servidor. */
+  const [actualizandoCant, setActualizandoCant] = useState(false);
   const [procesando, setProcesando] = useState<Set<number>>(new Set());
   const [toast, setToast]         = useState('');
   const [confirmarSalir, setConfirmarSalir] = useState(false);
@@ -437,8 +404,10 @@ const Localidad: React.FC = () => {
     const next = cantidad + delta;
     if (next < 1 || next > max) return;
 
+    if (actualizandoCant) return;
     const mas: 'mas' | 'menos' = delta === 1 ? 'mas' : 'menos';
     setCantidad(next);
+    setActualizandoCant(true);
 
     try {
       await axios.post(
@@ -458,6 +427,8 @@ const Localidad: React.FC = () => {
     } catch {
       setCantidad(cantidad);
       setToast('Error al actualizar la reserva. Intenta de nuevo.');
+    } finally {
+      setActualizandoCant(false);
     }
   };
 
@@ -475,6 +446,14 @@ const Localidad: React.FC = () => {
 
   const cantCarrito  = tipo === 'correlativo' ? cantidad : sel.length;
   const totalCarrito = cantCarrito * precio;
+
+  const esMapa = tipo === 'fila' || tipo === 'mesa';
+  usePinchZoom(mapScrollRef, zoom, setZoom, esMapa && !cargando && !!localidad);
+
+  /* "Pagar" solo cuando la asignación terminó de cargar (mapa de mesa/fila
+     o selector de cantidad correlativo) y no queda ninguna reserva/cambio
+     de cantidad esperando respuesta. */
+  const listoParaPagar = !cargando && !!localidad && procesando.size === 0 && !actualizandoCant;
 
   return (
     <IonPage>
@@ -528,11 +507,11 @@ const Localidad: React.FC = () => {
               <div className="corr-view">
                 <p className="corr-desc">Boletos asignados automáticamente. Máx. {MAX_SEL}.</p>
                 <div className="qty-row">
-                  <button className="qty-btn" onClick={() => cambiarCantidad(-1)}>
+                  <button className="qty-btn" onClick={() => cambiarCantidad(-1)} disabled={actualizandoCant}>
                     <IonIcon icon={removeOutline} />
                   </button>
-                  <span className="qty-num">{cantidad}</span>
-                  <button className="qty-btn" onClick={() => cambiarCantidad(1)}>
+                  <span className="qty-num">{actualizandoCant ? <IonSpinner name="dots" /> : cantidad}</span>
+                  <button className="qty-btn" onClick={() => cambiarCantidad(1)} disabled={actualizandoCant}>
                     <IonIcon icon={addOutline} />
                   </button>
                 </div>
@@ -553,9 +532,9 @@ const Localidad: React.FC = () => {
                     <span className="leg l-sel">Seleccionada</span>
                   </div>
                   <div className="zoom-bar">
-                    <button className="z-btn" onClick={() => setZoom(z => Math.max(0.4, +(z-0.15).toFixed(2)))}>−</button>
+                    <button className="z-btn" onClick={() => setZoom(z => Math.max(ZOOM_MIN, +(z-0.15).toFixed(2)))}>−</button>
                     <span className="z-pct">{Math.round(zoom * 100)}%</span>
-                    <button className="z-btn" onClick={() => setZoom(z => Math.min(3, +(z+0.15).toFixed(2)))}>+</button>
+                    <button className="z-btn" onClick={() => setZoom(z => Math.min(ZOOM_MAX, +(z+0.15).toFixed(2)))}>+</button>
                   </div>
                 </div>
 
@@ -563,11 +542,7 @@ const Localidad: React.FC = () => {
                   <p className="max-warn">Máximo {MAX_SEL} asientos por venta</p>
                 )}
 
-                <div className="map-scroll"
-                  onPointerDown={onPinchPointerDown}
-                  onPointerMove={onPinchPointerMove}
-                  onPointerUp={onPinchPointerUp}
-                  onPointerCancel={onPinchPointerUp}>
+                <div className="map-scroll" ref={mapScrollRef}>
                   {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                   <div className="map-canvas" style={{ zoom } as any}>
 
@@ -660,7 +635,8 @@ const Localidad: React.FC = () => {
               <span className="cart-t">${totalCarrito.toFixed(2)}</span>
             </div>
           </div>
-          <IonButton className="btn-pay" onClick={() => {
+          <IonButton className="btn-pay" disabled={!listoParaPagar} onClick={() => {
+            if (!listoParaPagar) return;
             pagandoRef.current = true;
             navigate('/pago', {
               state: {

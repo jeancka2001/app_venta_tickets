@@ -1,25 +1,29 @@
 import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonIcon, IonButton, IonAlert } from '@ionic/react';
 import { useState } from 'react';
-import { logOutOutline, personCircleOutline } from 'ionicons/icons';
+import { logOutOutline, personCircleOutline, lockClosedOutline, chevronForwardOutline } from 'ionicons/icons';
 import { useNavigate } from 'react-router-dom';
 import { obtenerStaffData, logoutStaff } from '../utils/staffAuth';
 import { eliminarCredencialesBiometricas } from '../utils/biometricAuth';
 import marcaTickets from '../images/MARCA_TICKETS.png';
 import { LegalLinks } from '../components/Legal';
+import { useAppLock } from '../context/AppLockContext';
+import { borrarConfigBloqueo, etiquetaBloqueo } from '../utils/bloqueoSesion';
 import './Perfil.css';
 
 const Perfil: React.FC = () => {
   const navigate = useNavigate();
   const staff = obtenerStaffData();
   const [alertLogout, setAlertLogout] = useState(false);
+  const { modo, config, abrirConfig } = useAppLock();
   const inicial = (staff?.name ?? staff?.username ?? '?').charAt(0);
 
   const cerrarSesion = () => {
-    logoutStaff();
+    logoutStaff({ renovable: false });
     /* Cerrar sesión también borra la huella guardada en este dispositivo --
        así el siguiente login siempre pide credenciales, no queda la puerta
        abierta con la huella de quien acaba de salir. */
     eliminarCredencialesBiometricas();
+    borrarConfigBloqueo();
     navigate('/home', { replace: true });
   };
 
@@ -52,6 +56,17 @@ const Perfil: React.FC = () => {
             <span className="item-label">Perfil</span>
             <h3 className="item-value">{staff?.perfil ?? '—'}</h3>
           </div>
+        </div>
+
+        <div className="perfil-items">
+          <button type="button" className="perfil-item perfil-item-accion" onClick={abrirConfig}>
+            <IonIcon icon={lockClosedOutline} className="perfil-item-icono" />
+            <span className="perfil-item-texto">
+              <span className="item-label">{modo === 'huella' ? 'Pedir huella después de' : 'Cerrar sesión después de'}</span>
+              <h3 className="item-value">{config?.modo === modo ? etiquetaBloqueo(config) : 'Sin configurar'}</h3>
+            </span>
+            <IonIcon icon={chevronForwardOutline} className="perfil-item-icono" />
+          </button>
         </div>
 
         <div className="perfil-logout">

@@ -17,6 +17,9 @@ import Comisiones from './pages/Comisiones';
 import EscanearBoleto from './pages/EscanearBoleto';
 import CanjearEntradas from './pages/CanjearEntradas';
 import { obtenerStaffData } from './utils/staffAuth';
+import { AppLockProvider } from './context/AppLockContext';
+import LockScreen from './components/LockScreen';
+import ConfigBloqueo from './components/ConfigBloqueo';
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/react/css/core.css';
@@ -62,6 +65,7 @@ const RutaAdmin: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const App: React.FC = () => (
   <IonApp>
+    <AppLockProvider>
     <IonReactRouter>
       <IonRouterOutlet>
         <Route path="/home" element={<Home />} />
@@ -82,7 +86,10 @@ const App: React.FC = () => (
         <Route path="/admin/evento/:codigoEvento/descuentos" element={<RutaAdmin><AdminDescuentos /></RutaAdmin>} />
         <Route path="/" element={<Navigate to="/home" replace />} />
       </IonRouterOutlet>
+      <LockScreen />
+      <ConfigBloqueo />
     </IonReactRouter>
+    </AppLockProvider>
   </IonApp>
 );
 

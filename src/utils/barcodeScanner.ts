@@ -1,4 +1,5 @@
 import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
+import { sinBloqueo } from './bloqueoSesion';
 
 /* Escaneo de código de barras/QR con la cámara del celular, para el flujo
    de "boleto físico" (Pago.tsx y DetalleCompra.tsx). Usa el método `scan()`
@@ -32,7 +33,8 @@ export const escanearBoletoFisico = async (): Promise<ResultadoEscaneo> => {
       }
     }
 
-    const { barcodes } = await BarcodeScanner.scan();
+    /* sinBloqueo: la pantalla del escáner no cuenta como salir de la app. */
+    const { barcodes } = await sinBloqueo(() => BarcodeScanner.scan());
     const valor = barcodes[0]?.displayValue || barcodes[0]?.rawValue;
     if (!valor) return { ok: false, mensaje: 'No se detectó ningún código.' };
     return { ok: true, codigo: valor };
