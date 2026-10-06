@@ -6,6 +6,7 @@ import {
 import {
   qrCodeOutline, scanOutline, copyOutline, personOutline, cardOutline,
   mailOutline, callOutline, locationOutline, checkmarkCircleOutline, checkmarkDoneOutline,
+  receiptOutline, linkOutline, openOutline,
 } from 'ionicons/icons';
 import { useNavigate } from 'react-router-dom';
 import { escanearBoletoFisico } from '../utils/barcodeScanner';
@@ -52,6 +53,11 @@ const descripcionAsiento = (d: InfoBoletoAsiento): string => {
   }
   return d.silla || d.fila || d.mesa || `Asiento #${d.id_item}`;
 };
+
+/* Asiento ocupado SIN orden de compra = lo asignó un admin desde
+   "Sincronizar boletos físicos" (o lo bloqueó a mano), no es una venta. */
+const esAsignacionManual = (d: InfoBoletoAsiento) =>
+  !d.id_registraCompra && String(d.estado || '').toUpperCase() === 'OCUPADO';
 
 const EscanearBoleto: React.FC = () => {
   const navigate = useNavigate();
@@ -125,15 +131,15 @@ const EscanearBoleto: React.FC = () => {
     }
   };
 
-  const renderComprador = (nombreCompleto?: string | null, cedula?: string | null, email?: string | null, movil?: string | null, ciudad?: string | null, direccion?: string | null) => {
+  const renderComprador = (nombreCompleto?: string | null, cedula?: string | null, email?: string | null, movil?: string | null, ciudad?: string | null, direccion?: string | null, titulo = 'Comprador', etiquetaCedula = 'Cédula') => {
     if (!nombreCompleto && !cedula) return null;
     return (
       <div className="escaneo-card">
-        <h3 className="escaneo-card-titulo"><IonIcon icon={personOutline} /> Comprador</h3>
+        <h3 className="escaneo-card-titulo"><IonIcon icon={personOutline} /> {titulo}</h3>
         {nombreCompleto && <div className="escaneo-fila"><span className="escaneo-fila-label">Nombre</span><span className="escaneo-fila-valor">{nombreCompleto}</span></div>}
         {cedula && (
           <div className="escaneo-fila">
-            <span className="escaneo-fila-label">Cédula</span>
+            <span className="escaneo-fila-label">{etiquetaCedula}</span>
             <span className="escaneo-fila-valor escaneo-cedula">
               {cedula}
               <button className="btn-copiar-cedula" onClick={() => copiarCedula(cedula)}>
@@ -167,6 +173,51 @@ const EscanearBoleto: React.FC = () => {
     );
   };
 
+  /* De dónde sale este asiento: una compra real, o un boleto físico que
+     un admin vinculó a mano a este asiento (sin compra). */
+  const renderOrigen = (d: InfoBoletoAsiento) => {
+    if (d.id_registraCompra) {
+      return (
+        <div className="escaneo-card">
+          <h3 className="escaneo-card-titulo"><IonIcon icon={receiptOutline} /> Origen</h3>
+          <div className="escaneo-fila">
+            <span className="escaneo-fila-label">Compra</span>
+            <span className="escaneo-fila-valor">
+              #{d.id_registraCompra}
+              <button className="btn-copiar-cedula" onClick={() => navigate(`/detalle-compra/${d.id_registraCompra}`)}>
+                <IonIcon icon={openOutline} />
+              </button>
+            </span>
+          </div>
+        </div>
+      );
+    }
+    if (!esAsignacionManual(d)) return null;
+    return (
+      <div className="escaneo-card">
+        <h3 className="escaneo-card-titulo"><IonIcon icon={linkOutline} /> Origen</h3>
+        <div className="escaneo-fila">
+          <span className="escaneo-fila-label">Tipo</span>
+          <span className="escaneo-fila-valor">
+            {d.id_registra_compra ? 'Boleto físico sincronizado' : 'Asiento asignado'} (sin compra)
+          </span>
+        </div>
+        {d.id_registra_compra && (
+          <div className="escaneo-fila">
+            <span className="escaneo-fila-label">Código</span>
+            <span className="escaneo-fila-valor">{d.id_registra_compra}</span>
+          </div>
+        )}
+        {d.fecha_ocupado && (
+          <div className="escaneo-fila">
+            <span className="escaneo-fila-label">Asignado el</span>
+            <span className="escaneo-fila-valor">{formatFecha(d.fecha_ocupado)}</span>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderResultado = () => {
     if (!resultado) return null;
 
@@ -193,7 +244,10 @@ const EscanearBoleto: React.FC = () => {
             </div>
           </div>
 
-          {renderComprador(d.nombreCompleto, d.cedula || d.cedula_compra, d.email, d.movil, d.ciudad, d.direccion)}
+          {renderOrigen(d)}
+          {esAsignacionManual(d)
+            ? renderComprador(null, d.cedula, null, null, null, null, 'Asignado a', 'Cédula / nota')
+            : renderComprador(d.nombreCompleto, d.cedula || d.cedula_compra, d.email, d.movil, d.ciudad, d.direccion)}
           {renderPago(d.forma_pago, d.estado_pago, d.total, d.fecha_compra)}
         </>
       );

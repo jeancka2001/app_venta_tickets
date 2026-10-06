@@ -10,6 +10,7 @@ import {
   type ItemMapaLocalidad,
 } from '../utils/localidadConfig';
 import { cambiarEstadoAsiento, liberarAsientosAdmin } from '../utils/adminEventos';
+import { sillaNum, agruparMesas, agruparFilas, colsMesa, claseSeat } from '../utils/mapaAsientos';
 import '../pages/Localidad.css';
 import './AdminLocalidadAsientos.css';
 
@@ -24,40 +25,6 @@ interface EstadoState {
   localidadNombre?: string;
   tipoLocalidad?: string;
 }
-
-const sillaNum = (item: ItemMapaLocalidad, idx: number) =>
-  item.silla?.split('-s-')[1] ?? String(idx + 1);
-
-const agruparMesas = (items: ItemMapaLocalidad[]) => {
-  const r: Record<string, Record<string, ItemMapaLocalidad[]>> = {};
-  items.forEach(item => {
-    const f = item.fila || 'A';
-    const m = item.mesa || 'M1';
-    if (!r[f]) r[f] = {};
-    if (!r[f][m]) r[f][m] = [];
-    r[f][m].push(item);
-  });
-  return r;
-};
-
-const agruparFilas = (items: ItemMapaLocalidad[]) => {
-  const r: Record<string, ItemMapaLocalidad[]> = {};
-  items.forEach((item, i) => {
-    const k = item.fila || String.fromCharCode(65 + Math.floor(i / 20));
-    if (!r[k]) r[k] = [];
-    r[k].push(item);
-  });
-  return r;
-};
-
-const colsMesa = (n: number) => (n <= 6 ? n : n <= 10 ? 5 : 6);
-
-const claseSeat = (item: ItemMapaLocalidad): string => {
-  if (item.estado === 'disponible') return 'sc-disp';
-  if (item.estado === 'reservado') return 'sc-res';
-  if (item.estado === 'ocupado' && !item.cedula) return 'sc-bloq';
-  return 'sc-ocp'; // ocupado con cédula -- venta real, bloqueado
-};
 
 const AdminLocalidadAsientos: React.FC = () => {
   const { idLocalidad } = useParams<{ codigoEvento: string; idLocalidad: string }>();

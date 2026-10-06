@@ -8,7 +8,7 @@ import {
   createOutline, swapHorizontalOutline, trashOutline,
   saveOutline, chevronDownOutline, chevronUpOutline,
   downloadOutline, listOutline, closeOutline, gridOutline, searchOutline,
-  alertCircleOutline, documentTextOutline, pricetagsOutline,
+  alertCircleOutline, documentTextOutline, pricetagsOutline, qrCodeOutline,
 } from 'ionicons/icons';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Filesystem, Directory } from '@capacitor/filesystem';
@@ -348,6 +348,10 @@ const AdminEventoDetalle: React.FC = () => {
                 <IonButton fill="outline" size="small" className="btn-admin-accion"
                   onClick={() => navigate(`/admin/evento/${evento.codigoEvento}/descuentos`)}>
                   <IonIcon icon={pricetagsOutline} slot="start" /> Descuentos
+                </IonButton>
+                <IonButton fill="outline" size="small" className="btn-admin-accion"
+                  onClick={() => navigate(`/admin/evento/${evento.codigoEvento}/sincronizar-fisicos`)}>
+                  <IonIcon icon={qrCodeOutline} slot="start" /> Sincronizar físicos
                 </IonButton>
               </div>
               <p className="admin-form-hint">
