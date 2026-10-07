@@ -34,7 +34,21 @@ export interface ResultadoAsientoSincronizado {
   id_localidades_items: number;
   ok: boolean;
   message?: string;
+  /* Solo cuando el backend tuvo una excepción en ese asiento: la sentencia
+     SQL donde falló y el error de MySQL, para mostrarlos en pantalla. */
+  detalle?: { paso?: string; codigo?: string | null; mensaje?: string };
 }
+
+/* Arma un texto con todo lo que se sabe de un error de la petición
+   (status HTTP, mensaje del backend, error de red de axios) para
+   mostrarlo tal cual en la app mientras se diagnostica. */
+const describirErrorHttp = (err: unknown): string => {
+  if (!axios.isAxiosError(err)) return `Error en la app: ${String((err as Error)?.message ?? err)}`;
+  if (!err.response) return `Sin respuesta del servidor (${err.code || 'red'}: ${err.message}).`;
+  const data = err.response.data;
+  const msgBack = typeof data === 'string' ? data.slice(0, 200) : (data?.message || JSON.stringify(data)?.slice(0, 200));
+  return `HTTP ${err.response.status}${msgBack ? ` -- ${msgBack}` : ''}`;
+};
 
 export type ResultadoSincronizacion =
   | { ok: true; resultados: ResultadoAsientoSincronizado[] }
@@ -45,29 +59,32 @@ export const sincronizarAsientosFisicos = async (
   idLocalidad: number,
   asientos: AsientoSincronizar[],
 ): Promise<ResultadoSincronizacion> => {
+  const body = {
+    codigoEvento,
+    id_localidad: idLocalidad,
+    id_operador: obtenerStaffData()?.id || 0,
+    asientos,
+  };
+  // Diagnóstico: se ve en la consola (chrome://inspect con el teléfono conectado).
+  console.log('[sincronizarAsientosFisicos] enviando', body);
   try {
-    const { data } = await axios.post(`${URL_BASE}/boletos_fisicos/sincronizar_asientos`, {
-      codigoEvento,
-      id_localidad: idLocalidad,
-      id_operador: obtenerStaffData()?.id || 0,
-      asientos,
-    }, { headers: jsonHeaders() });
+    const { data } = await axios.post(`${URL_BASE}/boletos_fisicos/sincronizar_asientos`, body, { headers: jsonHeaders() });
+    console.log('[sincronizarAsientosFisicos] respuesta', data);
     const resultados: ResultadoAsientoSincronizado[] = Array.isArray(data?.resultados) ? data.resultados : [];
     if (!data?.success && resultados.length === 0) {
-      return { ok: false, mensaje: data?.message || 'No se pudo sincronizar.' };
+      return { ok: false, mensaje: `Backend: ${data?.message || 'No se pudo sincronizar (respuesta sin detalle).'}` };
     }
     return { ok: true, resultados };
   } catch (err) {
+    console.error('[sincronizarAsientosFisicos] error', err);
+    const detalle = describirErrorHttp(err);
     if (axios.isAxiosError(err) && err.response?.status === 404) {
-      return { ok: false, mensaje: 'Servicio de sincronización no disponible (falta desplegar el backend).' };
+      return { ok: false, mensaje: `Servicio de sincronización no disponible (falta desplegar el backend). ${detalle}` };
     }
     if (axios.isAxiosError(err) && err.response?.status === 401) {
-      return { ok: false, mensaje: 'Tu sesión expiró. Vuelve a iniciar sesión.' };
+      return { ok: false, mensaje: `Tu sesión expiró. Vuelve a iniciar sesión. ${detalle}` };
     }
-    return {
-      ok: false,
-      mensaje: (axios.isAxiosError(err) && err.response?.data?.message) || 'Error de conexión al sincronizar.',
-    };
+    return { ok: false, mensaje: detalle };
   }
 };
 
@@ -91,7 +108,10 @@ export const verificarCodigoFisico = async (codigoEvento: string, codigo: string
     }).then(r => (r.data?.success && Array.isArray(r.data.data) ? r.data.data : [])).catch(() => null),
   ]);
 
-  if (info.ok && info.tipo === 'asiento') {
+  /* info-boleto también busca por el id interno del asiento (li.id), así
+     que un correlativo numérico puede "encontrar" un asiento cualquiera:
+     solo cuenta como ocupado si el código ES el QR de ese asiento. */
+  if (info.ok && info.tipo === 'asiento' && String(info.data.id_registra_compra ?? '').trim() === codigo.trim()) {
     const d = info.data;
     const donde = [d.localidad_nombre?.replace(/__+/g, '').trim(), d.fila ? `Fila ${d.fila}` : null, d.silla ? `Silla ${d.silla}` : null]
       .filter(Boolean).join(' · ');

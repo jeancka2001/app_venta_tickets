@@ -78,8 +78,14 @@ muestra la compra.
 
 ## Liberar una asignación
 
-Se usa la herramienta de siempre (**Ver / editar asientos › Liberar**, que
-llama a `liberar_asientos_admin`). Ojo: hoy esa ruta no toca asientos que
-tienen cédula. Si se quiere liberar uno sincronizado con cédula, habría que
-permitirlo cuando `id_registraCompra IS NULL`, y volver a poner como
-`Disponible` el boleto en `boletos_fisicos`.
+Implementado en `MS-LOGIN-BOLETERIA` (`SincronizarAsientosFisicos` en
+`BoletosFisicos.controller.js`). Un código que no está en el inventario se
+registra en `boletos_fisicos` con la sección `SINCRONIZADO`, guardando el QR
+digital original en `qr_original`.
+
+Se libera con la herramienta de siempre (**Ver / editar asientos › Liberar**,
+que llama a `liberar_asientos_admin`): borra el ticket, restaura el QR digital
+original y deja el boleto físico `Disponible`. Ojo: la pantalla de la app no
+deja tocar un asiento ocupado **con cédula** (lo trata como de un cliente), así
+que un asiento sincronizado con cédula hoy no se puede liberar desde esa
+pantalla (el endpoint sí lo permite).

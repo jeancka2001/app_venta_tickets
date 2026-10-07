@@ -23,7 +23,7 @@ import LockScreen from './components/LockScreen';
 import ConfigBloqueo from './components/ConfigBloqueo';
 
 /* Core CSS required for Ionic components to work properly */
-import '@ionic/react/css/core.css';
+import '@ionic/react/css/core.css'; 
 
 /* Basic CSS for apps built with Ionic */
 import '@ionic/react/css/normalize.css';

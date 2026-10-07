@@ -265,20 +265,31 @@ const AdminSincronizarFisicos: React.FC = () => {
       seccion: f.seccion,
     })));
     setGuardando(false);
-    if (!r.ok) { setToast(r.mensaje); return; }
+    // Error de toda la petición (red, HTTP, sesión): en el diálogo, no en
+    // un toast, para que se alcance a leer el detalle completo.
+    if (!r.ok) {
+      setResumenGuardado({ ok: 0, fallidos: [{ etiqueta: 'Petición', mensaje: r.mensaje }] });
+      return;
+    }
 
     // Sin detalle por asiento = todos OK (respuesta success:true plana).
     const porId = new Map(r.resultados.map(x => [Number(x.id_localidades_items), x]));
     const fallidos = enviados.filter(f => porId.size > 0 && !porId.get(f.item.idsilla)?.ok);
     const idsFallidos = new Set(fallidos.map(f => f.item.idsilla));
+    // Mensaje del backend + en qué sentencia SQL falló (si la hubo).
+    const mensajeDe = (idsilla: number) => {
+      const res = porId.get(idsilla);
+      const base = res?.message || 'No se pudo guardar este asiento (el backend no devolvió motivo).';
+      return res?.detalle?.paso ? `${base} [paso: ${res.detalle.paso}]` : base;
+    };
     setFilas(prev => prev
       .filter(f => idsFallidos.has(f.item.idsilla))
-      .map(f => ({ ...f, error: porId.get(f.item.idsilla)?.message || 'No se pudo guardar este asiento.' })));
+      .map(f => ({ ...f, error: mensajeDe(f.item.idsilla) })));
     setResumenGuardado({
       ok: enviados.length - fallidos.length,
       fallidos: fallidos.map(f => ({
         etiqueta: etiquetaAsiento(f.item, esMesa),
-        mensaje: porId.get(f.item.idsilla)?.message || 'No se pudo guardar este asiento.',
+        mensaje: mensajeDe(f.item.idsilla),
       })),
     });
     recargarMapa();
