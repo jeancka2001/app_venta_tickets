@@ -42,6 +42,10 @@ interface PagoState {
   sillasSeleccionadas?: (string | null)[];
   comisionBoleto: number;
   iva: string;
+  // x2: boletos por precio (1 = normal). cantidad = entradas; se cobra un precio por cada "factor" entradas
+  factorBoletos?: number;
+  // Opcion de compra elegida (promocion de la localidad); vacio = Individual
+  modalidadCodigo?: string;
   cliente: Cliente | null;
 }
 
@@ -293,6 +297,9 @@ const Pago: React.FC = () => {
 
   const precioNum   = Number(st.precio        || 0);
   const cantidadNum = Number(st.cantidad      || 1);
+  const factorNum   = Math.max(1, Math.min(10, Math.floor(Number(st.factorBoletos) || 1)));
+  // Precios a cobrar (paquetes): con x2, 2 entradas = 1 precio. La comision por boleto sigue siendo por entrada
+  const cantidadCobro = factorNum > 1 ? Math.ceil(cantidadNum / factorNum) : cantidadNum;
   const comBoleto   = Number(st.comisionBoleto || 0);
   const ivaRate      = parseFloat((st.iva || '1.00').replace('1.', '0.'));
 
@@ -313,7 +320,7 @@ const Pago: React.FC = () => {
     : precioNum;
 
   const { subtotal, comisionServicio, ivaImporte, comisionBancaria, total } =
-    calcularTotalConComision(precioParaCalculo, cantidadNum, comBoleto, ivaRate, met.pct, met.aplicaComisionBoleto);
+    calcularTotalConComision(precioParaCalculo, cantidadCobro, comBoleto * factorNum, ivaRate, met.pct, met.aplicaComisionBoleto);
 
   /* `total`: en modo "base" ya sale NETO -- va tal cual en valores.total y
      el backend no lo vuelve a tocar (RegistraCompra.controller.js confía en
@@ -327,7 +334,7 @@ const Pago: React.FC = () => {
     ? total
     : (descuentoActivo ? aplicarDescuento(total, descuentoActivo.porcentaje).neto : total);
   const montoDescuento = (aplicaSobreBase && descuentoActivo)
-    ? Math.round(((precioNum - precioParaCalculo) * cantidadNum + Number.EPSILON) * 100) / 100
+    ? Math.round(((precioNum - precioParaCalculo) * cantidadCobro + Number.EPSILON) * 100) / 100
     : (descuentoActivo ? aplicarDescuento(total, descuentoActivo.porcentaje).monto : 0);
 
   /* Verificación local del comprobante leído por OCR contra lo que
@@ -707,6 +714,10 @@ const Pago: React.FC = () => {
           idespaciolocalida:   st.idPrecio        || 0,
           CODIGEVENTO:         st.codigoEvento    || '',
           cantidad:            st.cantidad        || 1,
+          // x2: el backend arma las entradas como paquetes x factor (y valida sillas de a pares por mesa)
+          cantidad_paquetes:   cantidadCobro,
+          factor_boletos:      factorNum,
+          ...(st.modalidadCodigo ? { modalidad_codigo: st.modalidadCodigo } : {}),
           localidad_nombre:    st.localidadNombre || '',
           localidad_precio:    st.precio          || 0,
           comision_por_boleto: comisionServicio.toFixed(2),

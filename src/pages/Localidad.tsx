@@ -66,6 +66,10 @@ interface NavState {
   idPrecio?: number;
   comisionBoleto?: string;
   iva?: string;
+  // x2 (o x3...): boletos por precio. Correlativo: cada "+" suma un paquete; filas/mesas: sillas de a
+  // "factor" en la misma mesa o fila. El backend lo vuelve a validar al comprar.
+  factorBoletos?: number;
+  modalidadCodigo?: string;
   cliente: Cliente | null;
 }
 
@@ -146,6 +150,7 @@ const Localidad: React.FC = () => {
   const precio = parseFloat(st.precio || '0');
   const tipo   = (st.tipo || 'correlativo').toLowerCase();
   const nombre = (st.nombre || '').replace(/__+/g, '').trim();
+  const factor = Math.max(1, Math.min(10, Math.floor(Number(st.factorBoletos) || 1)));
 
   const haySeleccionActiva = () =>
     tipo === 'correlativo' ? corrActivoRef.current : selRef.current.length > 0;
@@ -400,7 +405,8 @@ const Localidad: React.FC = () => {
 
   const cambiarCantidad = async (delta: 1 | -1) => {
     if (!localidad) return;
-    const max  = Math.min(localidad.resumen.disponibles, MAX_SEL);
+    // Con x2 cada paso es un paquete de "factor" entradas
+    const max  = Math.floor(Math.min(localidad.resumen.disponibles, MAX_SEL) / factor);
     const next = cantidad + delta;
     if (next < 1 || next > max) return;
 
@@ -416,7 +422,7 @@ const Localidad: React.FC = () => {
           id,
           cedula:      cliente?.cedula || '',
           estado:      'reservado',
-          cantidad:    1,
+          cantidad:    factor,
           mas,
           id_usuario:  cliente?.id || 0,
           id_operador: staff?.id || 0,
@@ -444,8 +450,20 @@ const Localidad: React.FC = () => {
     return item.estado !== 'disponible' || sel.length >= MAX_SEL;
   };
 
-  const cantCarrito  = tipo === 'correlativo' ? cantidad : sel.length;
-  const totalCarrito = cantCarrito * precio;
+  // Entradas (asientos) y precios a cobrar: con x2 se cobra un precio por cada "factor" entradas
+  const cantCarrito  = tipo === 'correlativo' ? cantidad * factor : sel.length;
+  const paquetesCarrito = factor > 1 ? Math.ceil(cantCarrito / factor) : cantCarrito;
+  const totalCarrito = paquetesCarrito * precio;
+  // Mesas / filas con sillas sueltas (x2 exige pares completos en la misma mesa o fila)
+  const gruposIncompletos = (() => {
+    if (factor <= 1 || tipo === 'correlativo') return [] as string[];
+    const conteo = new Map<string, number>();
+    sel.forEach(s => {
+      const g = String(s.silla ?? '').replace(/-s-\d+\s*$/i, '').split('__')[0];
+      conteo.set(g, (conteo.get(g) || 0) + 1);
+    });
+    return [...conteo].filter(([, n]) => n % factor !== 0).map(([g, n]) => `${g} (${n})`);
+  })();
 
   const esMapa = tipo === 'fila' || tipo === 'mesa';
   usePinchZoom(mapScrollRef, zoom, setZoom, esMapa && !cargando && !!localidad);
@@ -453,7 +471,8 @@ const Localidad: React.FC = () => {
   /* "Pagar" solo cuando la asignación terminó de cargar (mapa de mesa/fila
      o selector de cantidad correlativo) y no queda ninguna reserva/cambio
      de cantidad esperando respuesta. */
-  const listoParaPagar = !cargando && !!localidad && procesando.size === 0 && !actualizandoCant;
+  const listoParaPagar = !cargando && !!localidad && procesando.size === 0 && !actualizandoCant
+    && gruposIncompletos.length === 0 && cantCarrito > 0;
 
   return (
     <IonPage>
@@ -516,7 +535,7 @@ const Localidad: React.FC = () => {
                   </button>
                 </div>
                 <p className="price-line">
-                  ${precio.toFixed(2)} × {cantidad} = <strong>${totalCarrito.toFixed(2)}</strong>
+                  ${precio.toFixed(2)} × {cantidad}{factor > 1 ? ` (x${factor}: ${cantCarrito} entradas)` : ''} = <strong>${totalCarrito.toFixed(2)}</strong>
                 </p>
               </div>
             )}
@@ -525,6 +544,12 @@ const Localidad: React.FC = () => {
               <div className="map-section">
                 <div className="map-topbar">
                   <p className="corr-desc">Seleccione boletos. Máx. {MAX_SEL}.</p>
+                  {factor > 1 && (
+                    <p className="corr-desc">
+                      <strong>x{factor}</strong>: elija de {factor} en {factor} sillas en la misma {tipo === 'mesa' ? 'mesa' : 'fila'} · ${precio.toFixed(2)} cada {factor}.
+                      {gruposIncompletos.length > 0 && <span style={{ color: '#c0392b' }}> Falta completar: {gruposIncompletos.join(', ')}.</span>}
+                    </p>
+                  )}
                   <div className="legend">
                     <span className="leg l-disp">Disponible</span>
                     <span className="leg l-res">Reservada</span>
@@ -647,6 +672,8 @@ const Localidad: React.FC = () => {
                 localidadNombre: nombre,
                 precio,
                 cantidad:        cantCarrito,
+                factorBoletos:   factor,
+                modalidadCodigo: st.modalidadCodigo || '',
                 idSillas:        tipo === 'correlativo' ? [] : sel.map(s => s.idsilla),
                 // Etiqueta cruda de cada asiento elegido (mismo orden que
                 // idSillas) -- solo para que Pago.tsx pueda mostrarle al

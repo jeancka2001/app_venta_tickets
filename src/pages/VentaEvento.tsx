@@ -37,6 +37,13 @@ interface Localidad {
   cantidad_disponible: number;
   tipo_localidad: string;
   comision_boleto?: string;
+  // Boletos por precio (x2: dos entradas / dos sillas de la misma mesa por un precio)
+  factor_boletos?: string | number | null;
+  // Opciones de compra de la localidad (promociones con las mismas sillas): Evento -> Localidades y asientos
+  modalidades?: { codigo: string; nombre: string; precio: string; factor: number }[];
+  // Opcion elegida (se arma aqui: una fila por opcion)
+  modalidadCodigo?: string;
+  modalidadNombre?: string;
 }
 
 interface EventoState {
@@ -308,6 +315,8 @@ const VentaEvento: React.FC = () => {
         codigoEvento: codigoEvento ?? '',
         idPrecio: precio.id,
         comisionBoleto: precio.comision_boleto ?? '0',
+        factorBoletos: Number(precio.factor_boletos) || 1,
+        modalidadCodigo: precio.modalidadCodigo || '',
         iva: evento?.iva ?? '1.00',
         cliente,
       },
@@ -447,10 +456,14 @@ const VentaEvento: React.FC = () => {
                 <IonText color="medium"><p className="sin-precios">No hay localidades disponibles</p></IonText>
               )}
 
-              {!cargandoPrecios && precios.map((p) => (
-                <div key={p.id} className="localidad-row" onClick={() => seleccionarLocalidad(p)}>
+              {!cargandoPrecios && precios.flatMap((p) => [p, ...(p.modalidades || []).map((m) => ({
+                ...p, precio_normal: String(m.precio), factor_boletos: m.factor, modalidadCodigo: m.codigo, modalidadNombre: m.nombre,
+              }))]).map((p) => (
+                <div key={`${p.id}-${p.modalidadCodigo || ''}`} className="localidad-row" onClick={() => seleccionarLocalidad(p)}>
                   <div className="localidad-info">
-                    <span className="localidad-nombre">{p.localidad.replace(/__+/g, '').trim()}</span>
+                    <span className="localidad-nombre">
+                      {p.localidad.replace(/__+/g, '').trim()}{p.modalidadNombre ? ` · ${p.modalidadNombre}` : ((p.modalidades || []).length ? ' · Individual' : '')}
+                    </span>
                     <span className="localidad-disp">{p.cantidad_disponible} disponibles</span>
                   </div>
                   <div className="localidad-precio-row">

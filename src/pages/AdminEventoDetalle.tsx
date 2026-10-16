@@ -11,7 +11,7 @@ import {
   alertCircleOutline, documentTextOutline, pricetagsOutline, qrCodeOutline,
 } from 'ionicons/icons';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Filesystem, Directory } from '@capacitor/filesystem'; 
 import {
   listarEventosAdmin, listarLocalidadesAdmin, crearLocalidadAdmin,
   actualizarPrecioLocalidadAdmin, eliminarLocalidadAdmin, actualizarEstadoEvento,
