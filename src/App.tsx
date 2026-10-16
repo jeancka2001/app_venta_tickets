@@ -14,7 +14,7 @@ import AdminLocalidadAsientos from './pages/AdminLocalidadAsientos';
 import AdminMetodosPago from './pages/AdminMetodosPago';
 import AdminDescuentos from './pages/AdminDescuentos';
 import AdminSincronizarFisicos from './pages/AdminSincronizarFisicos';
-import Comisiones from './pages/Comisiones';
+import Comisiones from './pages/Comisiones'; 
 import EscanearBoleto from './pages/EscanearBoleto';
 import CanjearEntradas from './pages/CanjearEntradas';
 import { obtenerStaffData } from './utils/staffAuth';
