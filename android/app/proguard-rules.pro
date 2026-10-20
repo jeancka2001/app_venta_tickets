@@ -12,10 +12,20 @@
 #   public *;
 #}
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Conserva números de línea para que los stack traces de Play Console sean legibles
+-keepattributes SourceFile,LineNumberTable,*Annotation*,Signature,InnerClasses,EnclosingMethod
+-renamesourcefileattribute SourceFile
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Capacitor: el bridge usa reflexión y @JavascriptInterface
+-keep class com.getcapacitor.** { *; }
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+
+# Plugins Capacitor usados por la app
+-keep class io.capawesome.capacitorjs.plugins.mlkit.barcodescanning.** { *; }
+-keep class ee.forgr.biometric.** { *; }
+-keep class com.capacitorjs.plugins.** { *; }
+
+# Actividad principal
+-keep class ec.ticketsEC.ventas.** { *; }

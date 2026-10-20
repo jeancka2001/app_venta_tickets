@@ -7,8 +7,8 @@ android {
         applicationId "ec.ticketsEC.ventas"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 6
-        versionName "1.1.6"
+        versionCode 9
+        versionName "1.1.9"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -18,8 +18,14 @@ android {
     }
     buildTypes {
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            // R8: reduce tamaño y genera mapping.txt (se incluye en el .aab automáticamente)
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // Incluye símbolos de depuración nativos en el .aab (requiere NDK instalado)
+            ndk {
+                debugSymbolLevel 'FULL'
+            }
         }
     }
 }

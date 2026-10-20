@@ -68,6 +68,8 @@ const AdminSincronizarFisicos: React.FC = () => {
 
   const [filas, setFilas] = useState<FilaSync[]>([]);
   const filasRef = useRef<FilaSync[]>([]);
+  // Misma cédula / texto para todas las filas (ej. una empresa a la que se le asigna un grupo de asientos)
+  const [cedulaTodas, setCedulaTodas] = useState('');
   filasRef.current = filas;
   const inputsCodigo = useRef<Record<number, HTMLInputElement | null>>({});
 
@@ -475,6 +477,21 @@ const AdminSincronizarFisicos: React.FC = () => {
                 Escanear QR en secuencia
               </IonButton>
 
+              <div className="sync-codigo-row" style={{ marginTop: 8 }}>
+                <input
+                  className="sync-input"
+                  type="text"
+                  placeholder="Cédula o texto para todas las filas"
+                  value={cedulaTodas}
+                  maxLength={60}
+                  onChange={(e) => setCedulaTodas(e.target.value)}
+                />
+                <IonButton size="small" fill="outline" disabled={!cedulaTodas.trim() || guardando}
+                  onClick={() => setFilas(prev => prev.map(f => ({ ...f, cedula: cedulaTodas.trim() })))}>
+                  Aplicar a todas
+                </IonButton>
+              </div>
+
               {filas.map((f, i) => (
                 <div key={f.item.idsilla} className={`sync-fila ${f.error ? 'sync-fila-error' : f.codigoVerificado ? 'sync-fila-ok' : ''}`}>
                   <div className="sync-fila-head">
@@ -533,7 +550,8 @@ const AdminSincronizarFisicos: React.FC = () => {
       <IonAlert
         isOpen={confirmarGuardar}
         header="Sincronizar asientos"
-        message={`${filas.length} asiento(s) de ${localidad?.localidad ?? ''} quedarán ocupados: ${conCodigo} con QR del boleto físico y ${conCedula} con cédula.`}
+        message={`${filas.length} asiento(s) de ${localidad?.localidad ?? ''} quedarán ocupados: ${conCodigo} con QR del boleto físico y ${conCedula} con cédula.`
+          + (conCedula > 0 && conCedula < filas.length ? ` ⚠ ${filas.length - conCedula} fila(s) van SIN cédula: si son de la misma persona o empresa, usa "Aplicar a todas".` : '')}
         buttons={[
           { text: 'Cancelar', role: 'cancel' },
           { text: 'Guardar', handler: () => { guardar(); } },
