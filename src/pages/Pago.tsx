@@ -16,7 +16,7 @@ import { escanearBoletoFisico } from '../utils/barcodeScanner';
 import axios from 'axios';
 import { MS_LOGIN_AUTH_HEADERS } from '../utils/msLoginAuth';
 import {
-  obtenerMetodosPagoActivos, METODOS_CONFIGURABLES, calcularTotalConComision,
+  obtenerMetodosPagoVendedor, METODOS_CONFIGURABLES, calcularTotalConComision,
   type CategoriaMetodo,
 } from '../utils/metodosPago';
 import { obtenerStaffData, logoutStaff } from '../utils/staffAuth';
@@ -111,6 +111,9 @@ const Pago: React.FC = () => {
 
   const [metodo, setMetodo]     = useState('');
   const [metodosDisponibles, setMetodosDisponibles] = useState<MetodoItem[] | null>(null);
+  // Aviso cuando no se pudieron cargar los métodos o el vendedor no tiene ninguno asignado
+  const [avisoMetodos, setAvisoMetodos] = useState('');
+  const [intentoMetodos, setIntentoMetodos] = useState(0);
   const [cargando, setCargando] = useState(false);
   const [error, setError]       = useState('');
   const [urlPago, setUrlPago]   = useState('');
@@ -227,8 +230,18 @@ const Pago: React.FC = () => {
         return;
       }
 
-      const activos = await obtenerMetodosPagoActivos(st.codigoEvento);
-      console.log('[Pago] metodos que devolvio el backend (ya filtrados por usuario_metodos_pago si aplica):', activos);
+      const resp = await obtenerMetodosPagoVendedor(st.codigoEvento);
+      const activos = resp.data;
+      console.log('[Pago] metodos que devolvio el backend (ya filtrados por usuario_metodos_pago si aplica):', activos, 'restringido:', resp.restringido);
+      // No se pudieron cargar: antes se mostraban TODOS los métodos; ahora ninguno, con aviso y botón de
+      // reintentar (el backend igual rechaza una venta con un método no autorizado).
+      if (!resp.ok) {
+        if (cancelado) return;
+        setMetodosDisponibles([]);
+        setMetodo('');
+        setAvisoMetodos('No se pudieron cargar tus métodos de pago. Revisa tu conexión y reintenta.');
+        return;
+      }
       const porMetodo = new Map(activos.map(a => [a.metodo, a]));
       // Se filtra por PRESENCIA en la respuesta de metodos_pago_activos, no
       // por su flag `activo`: si el vendedor tiene métodos restringidos
@@ -238,8 +251,10 @@ const Pago: React.FC = () => {
       // interruptor global no se usa acá por ahora, para no ocultar nada
       // por una fila mal configurada). Lista vacía (falla de red/token)
       // también muestra todos, para no dejar al vendedor sin ninguna opción.
+      // Con métodos asignados (restringido): SOLO esos, aunque la lista quede vacía.
+      // Sin restricción: como siempre (lo que devuelve el backend; lista vacía = todos).
       const lista: MetodoItem[] = METODOS_CONFIGURABLES
-        .filter(m => activos.length === 0 || porMetodo.has(m.key))
+        .filter(m => resp.restringido ? porMetodo.has(m.key) : (activos.length === 0 || porMetodo.has(m.key)))
         .map(m => {
           const cfg = porMetodo.get(m.key);
           const pct = cfg?.comision_porcentaje ?? m.pctDefault;
@@ -260,10 +275,12 @@ const Pago: React.FC = () => {
       console.log('[Pago] lista final mostrada al vendedor:', lista.map(m => m.key));
       if (cancelado) return;
       setMetodosDisponibles(lista);
-      setMetodo(prev => prev || lista[0]?.key || '');
+      setAvisoMetodos(resp.restringido && lista.length === 0 ? 'No tienes métodos de pago asignados. Pídeselo al administrador.' : '');
+      // Si el método que estaba elegido no está permitido, se cambia al primero permitido
+      setMetodo(prev => (lista.some(x => x.key === prev) ? prev : (lista[0]?.key || '')));
     })();
     return () => { cancelado = true; };
-  }, [st.codigoEvento]);
+  }, [st.codigoEvento, intentoMetodos]);
 
   useEffect(() => {
     let cancelado = false;
@@ -1265,6 +1282,15 @@ const Pago: React.FC = () => {
 
             <div className="pago-card">
               <h3 className="pago-card-title">Método de pago</h3>
+              {avisoMetodos ? (
+                <div className="metodos-aviso" style={{ color: '#b00020', margin: '6px 0' }}>
+                  {avisoMetodos}
+                  {metodosDisponibles !== null && metodosDisponibles.length === 0 ? (
+                    <div><button type="button" className="btn-reintentar-metodos" style={{ marginTop: 6 }}
+                      onClick={() => { setMetodosDisponibles(null); setAvisoMetodos(''); setIntentoMetodos(n => n + 1); }}>Reintentar</button></div>
+                  ) : null}
+                </div>
+              ) : null}
               {metodosDisponibles === null ? (
                 <div className="metodos-loading"><IonSpinner name="crescent" /></div>
               ) : (

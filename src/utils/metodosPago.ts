@@ -45,6 +45,27 @@ export const obtenerMetodosPagoActivos = async (codigoEvento?: string): Promise<
   }
 };
 
+/* Para la pantalla de cobro (Pago.tsx): igual que obtenerMetodosPagoActivos() pero sin tragarse los errores y
+   con `restringido` (el vendedor tiene métodos asignados en Editar usuario -> se muestran SOLO esos, aunque la
+   lista quede vacía). Antes una lista vacía (error de red, sesión vencida o métodos asignados que no estaban en
+   la configuración) hacía que la app mostrara TODOS los métodos. El backend además valida la venta. */
+export const obtenerMetodosPagoVendedor = async (codigoEvento?: string): Promise<{
+  ok: boolean;
+  data: MetodoPagoActivo[];
+  restringido: boolean;
+}> => {
+  try {
+    const { data } = await axios.get(`${URL_BASE}/metodos_pago_activos`, {
+      headers: staffAuthHeaders(),
+      params: codigoEvento ? { codigoEvento } : undefined,
+    });
+    if (!data?.success || !Array.isArray(data?.data)) return { ok: false, data: [], restringido: false };
+    return { ok: true, data: data.data, restringido: data.restringido === true };
+  } catch {
+    return { ok: false, data: [], restringido: false };
+  }
+};
+
 /* Para la pantalla de Admin > Métodos de pago: a diferencia de
    obtenerMetodosPagoActivos() (que traga errores para no romper la venta),
    acá se necesita saber SI falló y por qué -- mismo bug que tenía la web

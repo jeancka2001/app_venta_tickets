@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { staffAuthHeaders, logoutStaff } from '../utils/staffAuth';
 import {
-  obtenerMetodosPagoActivos, METODOS_CONFIGURABLES, calcularTotalConComision,
+  obtenerMetodosPagoVendedor, METODOS_CONFIGURABLES, calcularTotalConComision,
   type MetodoPagoActivo,
 } from '../utils/metodosPago';
 import marcaTickets from '../images/MARCA_TICKETS.png';
@@ -60,6 +60,8 @@ const Vender: React.FC = () => {
 
   /* "Sumar comisiones": null = no pedido todavía, 'cargando' = en curso,
      array = métodos activos ya traídos para ese evento. */
+  // Eventos donde el vendedor tiene métodos asignados: la vista previa muestra solo esos
+  const [restringidoPorEvento, setRestringidoPorEvento] = useState<Record<number, boolean>>({});
   const [metodosPorEvento, setMetodosPorEvento] =
     useState<Record<number, MetodoPagoActivo[] | 'cargando' | undefined>>({});
 
@@ -128,8 +130,9 @@ const Vender: React.FC = () => {
 
   const sumarComisiones = async (ev: Evento) => {
     setMetodosPorEvento(prev => ({ ...prev, [ev.id]: 'cargando' }));
-    const activos = await obtenerMetodosPagoActivos(ev.codigoEvento);
-    setMetodosPorEvento(prev => ({ ...prev, [ev.id]: activos }));
+    const resp = await obtenerMetodosPagoVendedor(ev.codigoEvento);
+    setRestringidoPorEvento(prev => ({ ...prev, [ev.id]: resp.restringido }));
+    setMetodosPorEvento(prev => ({ ...prev, [ev.id]: resp.data }));
   };
 
   return (
@@ -228,10 +231,11 @@ const Vender: React.FC = () => {
 
                               {Array.isArray(metodos) && (
                                 <div className="precio-metodos-lista">
-                                  {/* Se listan todos los métodos (mismo criterio
-                                      que Pago.tsx): la respuesta solo aporta la
-                                      comisión configurada, no oculta métodos. */}
+                                  {/* Mismo criterio que Pago.tsx: sin restricción se listan todos (la
+                                      respuesta solo aporta la comisión); con métodos asignados al
+                                      vendedor, solo esos. */}
                                   {METODOS_CONFIGURABLES
+                                    .filter(m => !restringidoPorEvento[ev.id] || metodos.some(a => a.metodo === m.key))
                                     .map(m => {
                                       const cfg = metodos.find(a => a.metodo === m.key);
                                       const pct = cfg?.comision_porcentaje ?? m.pctDefault;
