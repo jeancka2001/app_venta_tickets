@@ -353,6 +353,10 @@ const AdminEventoDetalle: React.FC = () => {
                   onClick={() => navigate(`/admin/evento/${evento.codigoEvento}/sincronizar-fisicos`)}>
                   <IonIcon icon={qrCodeOutline} slot="start" /> Sincronizar físicos
                 </IonButton>
+                <IonButton fill="outline" size="small" className="btn-admin-accion"
+                  onClick={() => navigate(`/admin/evento/${evento.codigoEvento}/mover-cortesias`)}>
+                  <IonIcon icon={swapHorizontalOutline} slot="start" /> Mover cortesías
+                </IonButton>
               </div>
               <p className="admin-form-hint">
                 El Excel de registros incluye las compras pagadas de este evento (mismo reporte que "Descargar registros" en la página admin).

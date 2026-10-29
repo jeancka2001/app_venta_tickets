@@ -14,6 +14,7 @@ import AdminLocalidadAsientos from './pages/AdminLocalidadAsientos';
 import AdminMetodosPago from './pages/AdminMetodosPago';
 import AdminDescuentos from './pages/AdminDescuentos';
 import AdminSincronizarFisicos from './pages/AdminSincronizarFisicos';
+import AdminMoverCortesias from './pages/AdminMoverCortesias';
 import Comisiones from './pages/Comisiones'; 
 import EscanearBoleto from './pages/EscanearBoleto';
 import CanjearEntradas from './pages/CanjearEntradas';
@@ -86,6 +87,7 @@ const App: React.FC = () => (
         <Route path="/admin/evento/:codigoEvento/localidad/:idLocalidad/asientos" element={<RutaAdmin><AdminLocalidadAsientos /></RutaAdmin>} />
         <Route path="/admin/evento/:codigoEvento/descuentos" element={<RutaAdmin><AdminDescuentos /></RutaAdmin>} />
         <Route path="/admin/evento/:codigoEvento/sincronizar-fisicos" element={<RutaAdmin><AdminSincronizarFisicos /></RutaAdmin>} />
+        <Route path="/admin/evento/:codigoEvento/mover-cortesias" element={<RutaAdmin><AdminMoverCortesias /></RutaAdmin>} />
         <Route path="/" element={<Navigate to="/home" replace />} />
       </IonRouterOutlet>
       <LockScreen />

@@ -1,0 +1,16 @@
+.mc-input { width: 100%; padding: 10px 12px; border: 1px solid #d5dbe6; border-radius: 10px; font-size: 0.9rem; background: #fff; color: #1a1e52; margin-bottom: 8px; }
+.mc-check { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: #4a5568; margin-bottom: 6px; }
+.mc-acciones { display: flex; gap: 14px; margin-bottom: 6px; }
+.mc-link { background: none; border: 0; padding: 0; font-size: 0.8rem; font-weight: 700; color: #1a1e52; text-decoration: underline; }
+.mc-link:disabled { color: #9da5b4; text-decoration: none; }
+.mc-lista { max-height: 260px; overflow: auto; border: 1px solid #e6eaf2; border-radius: 10px; padding: 4px 8px; }
+.mc-fila { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid #f0f2f7; font-size: 0.85rem; }
+.mc-fila:last-child { border-bottom: 0; }
+.mc-silla { font-weight: 700; color: #1a1e52; white-space: nowrap; }
+.mc-nombre { color: #4a5568; overflow: hidden; text-overflow: ellipsis; }
+.mc-mensaje { margin: 0 0 8px; font-size: 0.85rem; font-weight: 700; }
+.mc-ok { border-left: 4px solid #1e8449; }
+.mc-error { border-left: 4px solid #c0392b; }
+.mc-mov { font-size: 0.82rem; padding: 6px 0; border-top: 1px solid #f0f2f7; }
+.mc-mov-mal { color: #c0392b; }
+.mc-botones { display: flex; flex-direction: column; gap: 8px; }

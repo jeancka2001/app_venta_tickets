@@ -42,6 +42,8 @@ export interface ItemMapaLocalidad {
   idsilla: number;
   cedula?: string;
   id_registra_compra: string;
+  /* Compra a la que pertenece la silla (null/0 = sin compra: cortesía o bloqueo) */
+  id_registraCompra?: number | null;
 }
 
 export interface ResumenLocalidad {
@@ -68,6 +70,7 @@ export const obtenerMapaLocalidad = async (
       idsilla: Number(r.id),
       cedula: r.cedula != null ? String(r.cedula) : undefined,
       id_registra_compra: String(r.id_registra_compra ?? ''),
+      id_registraCompra: r.id_registraCompra != null ? Number(r.id_registraCompra) : null,
     }));
     const disponibles = items.filter((i) => i.estado === 'disponible').length;
     return { items, resumen: { total: items.length, disponibles, ocupadas: items.length - disponibles } };
