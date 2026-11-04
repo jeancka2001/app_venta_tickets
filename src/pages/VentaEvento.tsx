@@ -14,6 +14,7 @@ import axios from 'axios';
 import { MS_LOGIN_AUTH_HEADERS } from '../utils/msLoginAuth';
 import { staffAuthHeaders } from '../utils/staffAuth';
 import ZoomableImage from '../components/ZoomableImage';
+import { errorDeRuc } from '../utils/identificacion';
 import './VentaEvento.css';
 
 const URL_BASE = 'https://api.t-ickets.com/ms_login/api/v1';
@@ -132,7 +133,10 @@ const VentaEvento: React.FC = () => {
 
   const buscarCliente = async () => {
     const cedula = cedulaBusqueda.trim();
-    if (!cedula) { setError('Ingresa una cédula.'); return; }
+    if (!cedula) { setError('Ingresa una cédula o RUC.'); return; }
+    // Venta a un RUC: tiene que ser valido (la cedula y demas identificaciones no cambian)
+    const rucMal = errorDeRuc(cedula);
+    if (rucMal) { setError(rucMal); return; }
     setBuscando(true);
     setError('');
     setNoEncontrado(false);
@@ -195,6 +199,8 @@ const VentaEvento: React.FC = () => {
 
   const crearCliente = async () => {
     const cedula = cedulaBusqueda.trim();
+    const rucMal = errorDeRuc(cedula);
+    if (rucMal) { setError(rucMal); return; }
     if (!nombreNuevo.trim() || !emailNuevo.trim() || !movilNuevo.trim()) {
       setError('Completa nombre, correo y celular del nuevo cliente.');
       return;
@@ -368,7 +374,7 @@ const VentaEvento: React.FC = () => {
                   <IonInput
                     className="cliente-input"
                     fill="outline"
-                    placeholder="Cédula del cliente"
+                    placeholder="Cédula o RUC del cliente"
                     inputmode="numeric"
                     value={cedulaBusqueda}
                     onIonInput={(e) => setCedulaBusqueda(e.detail.value ?? '')}

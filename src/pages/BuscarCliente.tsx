@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { MS_LOGIN_AUTH_HEADERS } from '../utils/msLoginAuth';
 import marcaTickets from '../images/MARCA_TICKETS.png';
+import { errorDeRuc } from '../utils/identificacion';
 import './BuscarCliente.css';
 
 const URL_BASE = 'https://api.t-ickets.com/ms_login/api/v1';
@@ -61,7 +62,9 @@ const BuscarCliente: React.FC = () => {
 
   const buscar = async () => {
     const ced = cedula.trim();
-    if (!ced) { setError('Ingresa una cédula.'); return; }
+    if (!ced) { setError('Ingresa una cédula o RUC.'); return; }
+    const rucMal = errorDeRuc(ced);
+    if (rucMal) { setError(rucMal); return; }
     setBuscando(true);
     setError('');
     setBuscado(false);
@@ -108,7 +111,7 @@ const BuscarCliente: React.FC = () => {
             <IonInput
               className="buscar-input"
               fill="outline"
-              placeholder="Cédula del cliente"
+              placeholder="Cédula o RUC del cliente"
               inputmode="numeric"
               value={cedula}
               onIonInput={(e) => setCedula(e.detail.value ?? '')}
