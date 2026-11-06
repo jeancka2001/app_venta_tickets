@@ -204,3 +204,13 @@
   .comisiones-nivel2-nombre { color: #e8ecf5; }
   .comisiones-nivel2-sub { color: #9da5b4; }
 }
+
+.comisiones-select-evento {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--ion-color-medium, #999);
+  background: transparent;
+  color: inherit;
+  font-size: 15px;
+}

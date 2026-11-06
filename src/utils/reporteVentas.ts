@@ -43,13 +43,16 @@ export interface ReporteVentasUsuarioResponse {
   operadores: UsuarioAgg[];
   autogestion?: { resumen: UsuarioAgg; clientes: UsuarioAgg[] };
   sin_identificar?: UsuarioAgg;
+  // Eventos con ventas en el rango (antes de filtrar por evento), para poblar el selector
+  eventos_disponibles?: { codigoEvento: string; nombreConcierto: string }[];
 }
 
 export const obtenerReporteVentas = async (
   fechaInit: string,
-  fechaFin: string
+  fechaFin: string,
+  codigoEvento = ''
 ): Promise<ReporteVentasUsuarioResponse> => {
-  const qs = new URLSearchParams({ fecha_init: fechaInit, fecha_fin: fechaFin }).toString();
+  const qs = new URLSearchParams({ fecha_init: fechaInit, fecha_fin: fechaFin, ...(codigoEvento ? { codigoEvento } : {}) }).toString();
   const { data } = await axios.post(
     `${URL_BASE}/reporte_ventas_usuario?${qs}`,
     {},

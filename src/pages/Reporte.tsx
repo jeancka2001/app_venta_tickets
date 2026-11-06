@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { obtenerReporteVentas, UsuarioAgg } from '../utils/reporteVentas';
 import { obtenerReporteComisiones, type FilaComision } from '../utils/comisiones';
 import { obtenerStaffData } from '../utils/staffAuth';
-import { obtenerVentasSinRegistro, resumenPropio, type ResumenSinRegistro } from '../utils/ventasSinRegistro';
+import { obtenerVentasSinRegistro, opcionesEventos, resumenPropio, type OpcionEvento, type ResumenSinRegistro } from '../utils/ventasSinRegistro';
 import marcaTickets from '../images/MARCA_TICKETS.png';
 import './Reporte.css';
 
@@ -58,18 +58,25 @@ const Reporte: React.FC = () => {
   const [comisionPropia, setComisionPropia] = useState<FilaComision | null>(null);
   // Boletos fisicos vendidos a mi nombre SIN registro de cliente (los carga un admin); se suman a mis ventas y comisiones
   const [sinRegistro, setSinRegistro] = useState<ResumenSinRegistro | null>(null);
+  // Eventos donde este usuario vendio en el rango (se calculan al cargar 'Todos'); con 2 o mas se muestra el selector
+  const [codigoEvento, setCodigoEvento] = useState('');
+  const [eventosOpc, setEventosOpc] = useState<OpcionEvento[]>([]);
 
-  const generar = async (d = desde, h = hasta) => {
+  const generar = async (d = desde, h = hasta, ev = codigoEvento) => {
     setCargando(true);
     setError('');
     setBuscado(false);
     try {
       const [data, comisiones, sr] = await Promise.all([
-        obtenerReporteVentas(d, h),
-        obtenerReporteComisiones(d, h),
-        obtenerVentasSinRegistro(d, h),
+        obtenerReporteVentas(d, h, ev),
+        obtenerReporteComisiones(d, h, ev),
+        obtenerVentasSinRegistro(d, h, ev),
       ]);
       setSinRegistro(resumenPropio(sr, staff?.id));
+      if (!ev) {
+        const nombres = ((data.operadores ?? []).find(o => o.id === staff?.id)?.eventos ?? []).map(e => e.evento);
+        setEventosOpc(opcionesEventos(nombres, data.eventos_disponibles, sr));
+      }
       setComisionPropia(comisiones.success ? (comisiones.data[0] ?? null) : null);
       if (!data.success) {
         setError(data.message ?? 'No se pudo generar el reporte.');
@@ -91,7 +98,13 @@ const Reporte: React.FC = () => {
   const aplicarRango = (d: string, h: string) => {
     setDesde(d);
     setHasta(h);
-    generar(d, h);
+    setCodigoEvento('');
+    generar(d, h, '');
+  };
+
+  const cambiarEvento = (ev: string) => {
+    setCodigoEvento(ev);
+    generar(desde, hasta, ev);
   };
 
   const otrosCompras = miReporte
@@ -145,7 +158,7 @@ const Reporte: React.FC = () => {
             </div>
 
             <IonButton expand="block" className="btn-generar"
-              onClick={() => generar()} disabled={cargando || !desde || !hasta}>
+              onClick={() => { setCodigoEvento(''); generar(desde, hasta, ''); }} disabled={cargando || !desde || !hasta}>
               {cargando
                 ? <><IonSpinner name="crescent" className="btn-spinner" /> Generando…</>
                 : <><IonIcon icon={statsChartOutline} slot="start" /> Generar reporte</>}
@@ -153,6 +166,17 @@ const Reporte: React.FC = () => {
 
             {error && <p className="reporte-error">{error}</p>}
           </div>
+
+          {eventosOpc.length >= 2 && (
+            <div className="reporte-card">
+              <h3 className="reporte-card-title">Evento</h3>
+              <select className="reporte-select-evento" value={codigoEvento} disabled={cargando}
+                onChange={(e) => cambiarEvento(e.target.value)}>
+                <option value="">Todos mis eventos ({eventosOpc.length})</option>
+                {eventosOpc.map((e) => <option key={e.codigo} value={e.codigo}>{e.nombre}</option>)}
+              </select>
+            </div>
+          )}
 
           {buscado && !miReporte && !sinRegistro && (
             <div className="reporte-vacio">

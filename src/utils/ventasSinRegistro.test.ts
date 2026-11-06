@@ -31,3 +31,40 @@ describe('resumenPropio', () => {
     expect(resumenPropio(base(), 99)).toBeNull();
   });
 });
+
+import { opcionesEventos, srDeVendedor } from './ventasSinRegistro';
+
+describe('opcionesEventos', () => {
+  const disp = [
+    { codigoEvento: 'A', nombreConcierto: 'Evento A' },
+    { codigoEvento: 'B', nombreConcierto: 'Evento B' },
+    { codigoEvento: 'C', nombreConcierto: 'Evento C' },
+  ];
+  it('lista solo los eventos donde vendio el usuario y suma los de ventas sin registro', () => {
+    const sr = base({ vendedores: [{ ...base().vendedores[0], localidades: [{ codigoEvento: 'C', evento: 'Evento C', localidad: 'G', boletos: 1, total: 1 }] }] });
+    expect(opcionesEventos(['Evento B'], disp, sr).map((e) => e.codigo)).toEqual(['B', 'C']);
+  });
+  it('un admin ve todos los eventos del rango', () => {
+    expect(opcionesEventos([], disp, null, true)).toHaveLength(3);
+  });
+  it('sin ventas no hay opciones', () => {
+    expect(opcionesEventos([], disp, null)).toEqual([]);
+  });
+});
+
+describe('srDeVendedor', () => {
+  const admin = base({
+    vendedores: [
+      { ...base().vendedores[0], id_vendedor: 3, comision: 10, comision_nivel1: 0, id_nivel1: null },
+      { ...base().vendedores[0], id_vendedor: 8, comision: 4, comision_nivel1: 2.5, id_nivel1: 3 },
+    ],
+  });
+  it('un admin suma al nivel 1 lo que le generan sus nivel 2', () => {
+    expect(srDeVendedor(admin, 3, true)).toMatchObject({ comisionPropia: 10, comisionNivel2: 2.5, comisionTotal: 12.5 });
+    expect(srDeVendedor(admin, 8, true)).toMatchObject({ comisionPropia: 4, comisionNivel2: 0 });
+    expect(srDeVendedor(admin, 99, true)).toBeNull();
+  });
+  it('un vendedor nivel 1 sin ventas propias igual recibe lo de su nivel 2', () => {
+    expect(srDeVendedor(base({ vendedores: [], comision_nivel2_total: 5 }), 7, false)).toMatchObject({ comisionPropia: 0, comisionTotal: 5 });
+  });
+});
