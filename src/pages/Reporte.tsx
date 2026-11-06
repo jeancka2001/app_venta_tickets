@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { obtenerReporteVentas, UsuarioAgg } from '../utils/reporteVentas';
 import { obtenerReporteComisiones, type FilaComision } from '../utils/comisiones';
 import { obtenerStaffData } from '../utils/staffAuth';
+import { obtenerVentasSinRegistro, resumenPropio, type ResumenSinRegistro } from '../utils/ventasSinRegistro';
 import marcaTickets from '../images/MARCA_TICKETS.png';
 import './Reporte.css';
 
@@ -55,16 +56,20 @@ const Reporte: React.FC = () => {
   // esa jerarquía (no vendedor nivel 1 ni nivel 2) -- se oculta la tarjeta
   // en vez de mostrar un "$0.00" engañoso.
   const [comisionPropia, setComisionPropia] = useState<FilaComision | null>(null);
+  // Boletos fisicos vendidos a mi nombre SIN registro de cliente (los carga un admin); se suman a mis ventas y comisiones
+  const [sinRegistro, setSinRegistro] = useState<ResumenSinRegistro | null>(null);
 
   const generar = async (d = desde, h = hasta) => {
     setCargando(true);
     setError('');
     setBuscado(false);
     try {
-      const [data, comisiones] = await Promise.all([
+      const [data, comisiones, sr] = await Promise.all([
         obtenerReporteVentas(d, h),
         obtenerReporteComisiones(d, h),
+        obtenerVentasSinRegistro(d, h),
       ]);
+      setSinRegistro(resumenPropio(sr, staff?.id));
       setComisionPropia(comisiones.success ? (comisiones.data[0] ?? null) : null);
       if (!data.success) {
         setError(data.message ?? 'No se pudo generar el reporte.');
@@ -77,6 +82,7 @@ const Reporte: React.FC = () => {
     } catch {
       setError('Error de conexión al generar el reporte.');
       setMiReporte(null);
+      setSinRegistro(null);
     } finally {
       setCargando(false);
     }
@@ -148,42 +154,43 @@ const Reporte: React.FC = () => {
             {error && <p className="reporte-error">{error}</p>}
           </div>
 
-          {buscado && !miReporte && (
+          {buscado && !miReporte && !sinRegistro && (
             <div className="reporte-vacio">
               <IonText color="medium"><p>No tienes ventas registradas en este rango de fechas.</p></IonText>
             </div>
           )}
 
-          {miReporte && (
+          {(miReporte || sinRegistro) && (
             <>
               <div className="kpis-row">
                 <div className="kpi-card">
                   <IonIcon icon={cashOutline} className="kpi-icon" />
-                  <span className="kpi-valor">${f2(miReporte.pagado.monto)}</span>
-                  <span className="kpi-label">Total vendido</span>
+                  <span className="kpi-valor">${f2((miReporte?.pagado.monto ?? 0) + (sinRegistro?.total ?? 0))}</span>
+                  <span className="kpi-label">Total vendido{sinRegistro ? ' (con sin registro)' : ''}</span>
                 </div>
                 <div className="kpi-card">
                   <IonIcon icon={receiptOutline} className="kpi-icon" />
-                  <span className="kpi-valor">{miReporte.pagado.compras}</span>
+                  <span className="kpi-valor">{miReporte?.pagado.compras ?? 0}</span>
                   <span className="kpi-label">Compras pagadas</span>
                 </div>
                 <div className="kpi-card">
                   <IonIcon icon={ticketOutline} className="kpi-icon" />
-                  <span className="kpi-valor">{miReporte.pagado.boletos}</span>
-                  <span className="kpi-label">Boletos</span>
+                  <span className="kpi-valor">{(miReporte?.pagado.boletos ?? 0) + (sinRegistro?.boletos ?? 0)}</span>
+                  <span className="kpi-label">Boletos{sinRegistro ? ' (con sin registro)' : ''}</span>
                 </div>
                 <div className="kpi-card">
                   <IonIcon icon={pricetagOutline} className="kpi-icon" />
-                  <span className="kpi-valor">${f2(miReporte.pagado.comision)}</span>
+                  <span className="kpi-valor">${f2(miReporte?.pagado.comision)}</span>
                   <span className="kpi-label">Comisión de boleto</span>
                 </div>
               </div>
 
-              {comisionPropia && (
+              {(comisionPropia || (sinRegistro && sinRegistro.comisionTotal > 0)) && (
                 <div className="reporte-card">
                   <h3 className="reporte-card-title">
                     <IonIcon icon={peopleOutline} /> Mi comisión de vendedor
                   </h3>
+                  {comisionPropia && (
                   <div className="reporte-fila">
                     <div className="reporte-fila-info">
                       <span className="reporte-fila-nombre">Directa (mis ventas)</span>
@@ -191,7 +198,8 @@ const Reporte: React.FC = () => {
                     </div>
                     <span className="reporte-fila-monto">${f2(comisionPropia.comision_directa)}</span>
                   </div>
-                  {comisionPropia.nivel2.length > 0 && (
+                  )}
+                  {comisionPropia && comisionPropia.nivel2.length > 0 && (
                     <div className="reporte-fila">
                       <div className="reporte-fila-info">
                         <span className="reporte-fila-nombre">Por vendedores nivel 2 a mi cargo</span>
@@ -200,15 +208,27 @@ const Reporte: React.FC = () => {
                       <span className="reporte-fila-monto">${f2(comisionPropia.comision_nivel1_total)}</span>
                     </div>
                   )}
+                  {sinRegistro && sinRegistro.comisionTotal > 0 && (
+                    <div className="reporte-fila">
+                      <div className="reporte-fila-info">
+                        <span className="reporte-fila-nombre">Ventas sin registro</span>
+                        <span className="reporte-fila-sub">
+                          {sinRegistro.comisionPropia > 0 ? `${pct(sinRegistro.porcentaje)} sobre mis ventas sin registro` : 'Por mis vendedores nivel 2'}
+                          {sinRegistro.comisionPropia > 0 && sinRegistro.comisionNivel2 > 0 ? ` + $${f2(sinRegistro.comisionNivel2)} por nivel 2` : ''}
+                        </span>
+                      </div>
+                      <span className="reporte-fila-monto">${f2(sinRegistro.comisionTotal)}</span>
+                    </div>
+                  )}
                   <div className="reporte-fila reporte-fila-total">
                     <div className="reporte-fila-info">
                       <span className="reporte-fila-nombre">Total a cobrar</span>
                     </div>
-                    <span className="reporte-fila-monto">${f2(comisionPropia.comision_total)}</span>
+                    <span className="reporte-fila-monto">${f2((comisionPropia?.comision_total ?? 0) + (sinRegistro?.comisionTotal ?? 0))}</span>
                   </div>
-                  <IonButton fill="clear" size="small" className="btn-ver-comisiones" onClick={() => navigate('/comisiones')}>
+                  {comisionPropia && <IonButton fill="clear" size="small" className="btn-ver-comisiones" onClick={() => navigate('/comisiones')}>
                     Ver detalle
-                  </IonButton>
+                  </IonButton>}
                 </div>
               )}
 
@@ -222,12 +242,44 @@ const Reporte: React.FC = () => {
                 </div>
               )}
 
+              {sinRegistro && sinRegistro.boletos > 0 && (
+                <div className="reporte-card">
+                  <h3 className="reporte-card-title">Ventas sin registro</h3>
+                  <p className="reporte-fila-sub">Boletos físicos vendidos a tu nombre sin cliente registrado. Ya están sumados arriba.</p>
+                  <div className="reporte-fila">
+                    <div className="reporte-fila-info">
+                      <span className="reporte-fila-nombre">{sinRegistro.boletos} boletos</span>
+                      <span className="reporte-fila-sub">Sin comisión: ${f2(sinRegistro.neto)}</span>
+                    </div>
+                    <span className="reporte-fila-monto">${f2(sinRegistro.total)}</span>
+                  </div>
+                  {sinRegistro.metodos.map((m, i) => (
+                    <div key={`m${i}`} className="reporte-fila">
+                      <div className="reporte-fila-info">
+                        <span className="reporte-fila-nombre">{m.metodo}</span>
+                        <span className="reporte-fila-sub">{m.boletos} boletos</span>
+                      </div>
+                      <span className="reporte-fila-monto">${f2(m.total)}</span>
+                    </div>
+                  ))}
+                  {sinRegistro.localidades.map((l, i) => (
+                    <div key={`l${i}`} className="reporte-fila">
+                      <div className="reporte-fila-info">
+                        <span className="reporte-fila-nombre">{l.evento}</span>
+                        <span className="reporte-fila-sub">{l.localidad} · {l.boletos} boletos</span>
+                      </div>
+                      <span className="reporte-fila-monto">${f2(l.total)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="reporte-card">
                 <h3 className="reporte-card-title">Por método de pago</h3>
-                {(miReporte.formas_pago ?? []).length === 0 && (
+                {(miReporte?.formas_pago ?? []).length === 0 && (
                   <p className="reporte-sin-datos">Sin datos.</p>
                 )}
-                {(miReporte.formas_pago ?? []).map((fp, i) => (
+                {(miReporte?.formas_pago ?? []).map((fp, i) => (
                   <div key={i} className="reporte-fila">
                     <div className="reporte-fila-info">
                       <span className="reporte-fila-nombre">{fp.forma}</span>
@@ -240,10 +292,10 @@ const Reporte: React.FC = () => {
 
               <div className="reporte-card">
                 <h3 className="reporte-card-title">Por evento</h3>
-                {(miReporte.eventos ?? []).length === 0 && (
+                {(miReporte?.eventos ?? []).length === 0 && (
                   <p className="reporte-sin-datos">Sin datos.</p>
                 )}
-                {(miReporte.eventos ?? []).map((ev, i) => (
+                {(miReporte?.eventos ?? []).map((ev, i) => (
                   <div key={i} className="reporte-fila">
                     <div className="reporte-fila-info">
                       <span className="reporte-fila-nombre">{ev.evento}</span>
@@ -256,7 +308,7 @@ const Reporte: React.FC = () => {
             </>
           )}
 
-          {!buscado && !cargando && !miReporte && (
+          {!buscado && !cargando && !miReporte && !sinRegistro && (
             <div className="reporte-vacio">
               <IonText color="medium"><p>Elige un rango de fechas y toca "Generar reporte".</p></IonText>
             </div>

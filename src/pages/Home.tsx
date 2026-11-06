@@ -164,6 +164,7 @@ const Home: React.FC = () => {
               labelPlacement="floating"
               fill="outline"
               type="password"
+              clearOnEdit={false}
               autocomplete="current-password"
               value={contrasena}
               onIonInput={(e) => setContrasena(e.detail.value!)}
