@@ -184,7 +184,7 @@ export const actualizarDescripcionEvento = async (payload: ActualizarDescripcion
   }
 };
 
-export const ESTADOS_CAMBIABLES = ['PROCESO', 'PROXIMO', 'ACTIVO', 'CANCELADO'];
+export const ESTADOS_CAMBIABLES = ['PROCESO', 'PROXIMO', 'ACTIVO', 'CANCELADO', 'FINALIZADO'];
 
 export const actualizarEstadoEvento = async (codigoEvento: string, estado: string): Promise<{ success: boolean; message?: string }> => {
   try {
