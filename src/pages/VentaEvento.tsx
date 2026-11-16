@@ -35,6 +35,8 @@ interface Localidad {
   id_localidad: number;
   localidad: string;
   precio_normal: string;
+  // Precio para discapacidad / tercera edad (descuento 50%); 0 o vacio = la localidad no lo tiene
+  precio_discapacidad?: string;
   cantidad_disponible: number;
   tipo_localidad: string;
   comision_boleto?: string;
@@ -315,6 +317,8 @@ const VentaEvento: React.FC = () => {
       state: {
         nombre: precio.localidad,
         precio: precio.precio_normal,
+        // Las opciones de compra (promociones) no tienen descuento Dis./Ter. edad: solo la compra individual
+        precioDiscapacidad: precio.modalidadCodigo ? 0 : (parseFloat(precio.precio_discapacidad || '0') || 0),
         tipo: precio.tipo_localidad,
         nombreEvento: evento?.nombreConcierto ?? '',
         mapaConcierto: evento?.mapaConcierto ?? '',

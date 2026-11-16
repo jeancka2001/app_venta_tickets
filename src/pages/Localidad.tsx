@@ -22,6 +22,8 @@ import './Localidad.css';
    vendedor (staffAuth), que se manda como id_operador. */
 
 const MAX_SEL = 10;
+// Registro masivo: sin el tope de 10 por venta (el backend no lo exige)
+const MAX_MASIVO = 100;
 const TIEMPO_SELECCION_SEG = 180;
 const POLL_MS = 15000;
 
@@ -59,6 +61,8 @@ interface LocalidadData {
 interface NavState {
   nombre: string;
   precio: string;
+  // Precio Dis./Ter. edad (descuento 50%) de la localidad; 0 = no tiene
+  precioDiscapacidad?: number;
   tipo: string;
   nombreEvento?: string;
   mapaConcierto?: string;
@@ -126,6 +130,9 @@ const Localidad: React.FC = () => {
   const [imagenBloques, setImagenBloques] = useState<string | null>(null);
   const [showBloques, setShowBloques] = useState(false);
   const [segundosRestantes, setSegundosRestantes] = useState(TIEMPO_SELECCION_SEG);
+  // Registro masivo: permite vender mas de 10 entradas en una sola venta
+  const [masivo, setMasivo] = useState(false);
+  const limite = masivo ? MAX_MASIVO : MAX_SEL;
 
   const selRef        = useRef<SillaItem[]>([]);
   const corrActivoRef = useRef(false);
@@ -390,7 +397,7 @@ const Localidad: React.FC = () => {
     const isSel = sel.some(s => s.idsilla === item.idsilla);
     if (!isSel && item.estado !== 'disponible') return;
     if (procesando.has(item.idsilla)) return;
-    if (!isSel && sel.length >= MAX_SEL) return;
+    if (!isSel && sel.length >= limite) return;
 
     setProcesando(p => new Set([...p, item.idsilla]));
     try {
@@ -406,7 +413,7 @@ const Localidad: React.FC = () => {
   const cambiarCantidad = async (delta: 1 | -1) => {
     if (!localidad) return;
     // Con x2 cada paso es un paquete de "factor" entradas
-    const max  = Math.floor(Math.min(localidad.resumen.disponibles, MAX_SEL) / factor);
+    const max  = Math.floor(Math.min(localidad.resumen.disponibles, limite) / factor);
     const next = cantidad + delta;
     if (next < 1 || next > max) return;
 
@@ -447,7 +454,7 @@ const Localidad: React.FC = () => {
 
   const bloqueada = (item: SillaItem) => {
     if (sel.some(s => s.idsilla === item.idsilla)) return false;
-    return item.estado !== 'disponible' || sel.length >= MAX_SEL;
+    return item.estado !== 'disponible' || sel.length >= limite;
   };
 
   // Entradas (asientos) y precios a cobrar: con x2 se cobra un precio por cada "factor" entradas
@@ -493,6 +500,22 @@ const Localidad: React.FC = () => {
           <span>Vendiendo a:</span> <strong>{cliente?.nombreCompleto || cliente?.cedula || '—'}</strong>
         </div>
 
+        <label className="masivo-chip">
+          <input
+            type="checkbox"
+            checked={masivo}
+            onChange={(e) => {
+              // No se puede quitar el modo masivo con mas entradas de las que permite una venta normal
+              if (!e.target.checked && cantCarrito > MAX_SEL) {
+                setToast(`Quita entradas hasta dejar ${MAX_SEL} o menos para salir del registro masivo.`);
+                return;
+              }
+              setMasivo(e.target.checked);
+            }}
+          />
+          <span>Registro masivo <small>(hasta {MAX_MASIVO} entradas en una venta)</small></span>
+        </label>
+
         <div className={`temporizador-chip ${segundosRestantes <= 30 ? 'temporizador-critico' : ''}`}>
           <IonIcon icon={timeOutline} />
           <span>Tienes {formatMMSS(segundosRestantes)} para completar la selección</span>
@@ -524,7 +547,7 @@ const Localidad: React.FC = () => {
           <>
             {tipo === 'correlativo' && (
               <div className="corr-view">
-                <p className="corr-desc">Boletos asignados automáticamente. Máx. {MAX_SEL}.</p>
+                <p className="corr-desc">Boletos asignados automáticamente. Máx. {limite}.</p>
                 <div className="qty-row">
                   <button className="qty-btn" onClick={() => cambiarCantidad(-1)} disabled={actualizandoCant}>
                     <IonIcon icon={removeOutline} />
@@ -543,7 +566,7 @@ const Localidad: React.FC = () => {
             {(tipo === 'fila' || tipo === 'mesa') && (
               <div className="map-section">
                 <div className="map-topbar">
-                  <p className="corr-desc">Seleccione boletos. Máx. {MAX_SEL}.</p>
+                  <p className="corr-desc">Seleccione boletos. Máx. {limite}.</p>
                   {factor > 1 && (
                     <p className="corr-desc">
                       <strong>x{factor}</strong>: elija de {factor} en {factor} sillas en la misma {tipo === 'mesa' ? 'mesa' : 'fila'} · ${precio.toFixed(2)} cada {factor}.
@@ -563,8 +586,8 @@ const Localidad: React.FC = () => {
                   </div>
                 </div>
 
-                {sel.length >= MAX_SEL && (
-                  <p className="max-warn">Máximo {MAX_SEL} asientos por venta</p>
+                {sel.length >= limite && (
+                  <p className="max-warn">Máximo {limite} asientos por venta</p>
                 )}
 
                 <div className="map-scroll" ref={mapScrollRef}>
@@ -656,7 +679,7 @@ const Localidad: React.FC = () => {
           <div className="cart-left">
             <IonIcon icon={cartOutline} className="cart-ico" />
             <div>
-              <span className="cart-q">{cantCarrito}/{MAX_SEL} asientos</span>
+              <span className="cart-q">{cantCarrito}/{limite} asientos</span>
               <span className="cart-t">${totalCarrito.toFixed(2)}</span>
             </div>
           </div>
@@ -671,6 +694,7 @@ const Localidad: React.FC = () => {
                 nombreEvento:    st.nombreEvento    || '',
                 localidadNombre: nombre,
                 precio,
+                precioDiscapacidad: st.precioDiscapacidad ?? 0,
                 cantidad:        cantCarrito,
                 factorBoletos:   factor,
                 modalidadCodigo: st.modalidadCodigo || '',

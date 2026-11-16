@@ -21,6 +21,7 @@ import {
 } from '../utils/metodosPago';
 import { obtenerStaffData, logoutStaff } from '../utils/staffAuth';
 import { obtenerDescuentosVendedor, aplicarDescuento, type DescuentoVendedor } from '../utils/descuentos';
+import { puedeRegistrarCortesia } from '../utils/cortesias';
 import type { Cliente } from './VentaEvento';
 import './Pago.css';
 
@@ -34,6 +35,8 @@ interface PagoState {
   nombreEvento: string;
   localidadNombre: string;
   precio: number;
+  // Precio Dis./Ter. edad (descuento 50%) de la localidad; 0 = no tiene
+  precioDiscapacidad?: number;
   cantidad: number;
   idSillas: number[];
   // Etiqueta cruda de cada asiento en idSillas (mismo orden) -- viene de
@@ -50,6 +53,12 @@ interface PagoState {
 }
 
 interface MetodoItem { key: string; label: string; pct: number; desc: string; categoria: CategoriaMetodo; aplicaComisionBoleto: boolean; }
+
+/* Cortesia ($0.00): se ofrece como un metodo mas, solo a quien esta autorizado. Todo vale $0.00 y la venta queda marcada
+   como cortesia (sale en la Factura Final del evento). El backend revalida el permiso. */
+const METODO_CORTESIA: MetodoItem = {
+  key: 'Cortesia', label: 'Cortesía', pct: 0, desc: 'Entrada sin cobro · $0.00', categoria: 'local', aplicaComisionBoleto: false,
+};
 
 /* "A-s-1" -> "A · Silla 1" (mismo formato que ya usa localidades_items.silla
    / ticket_usuarios.sillas en toda la app -- ver numeroDeSilla en
@@ -272,6 +281,8 @@ const Pago: React.FC = () => {
       // restringido a 5 pero esta lista sigue mostrando mas, el problema
       // esta en este filtro (o en METODOS_CONFIGURABLES); si "activos" ya
       // viene con todos, el problema es del backend/guardado, no de la app.
+      // Cortesia: solo si este usuario esta autorizado a registrarlas
+      if (await puedeRegistrarCortesia(staffVigente.id as number | undefined) && !cancelado) lista.push(METODO_CORTESIA);
       console.log('[Pago] lista final mostrada al vendedor:', lista.map(m => m.key));
       if (cancelado) return;
       setMetodosDisponibles(lista);
@@ -302,6 +313,7 @@ const Pago: React.FC = () => {
   const esLocal = met.categoria === 'local';
   const esTransferencia = met.categoria === 'transferencia';
   const esDuna = met.key === 'Duna';
+  const esCortesia = met.key === 'Cortesia';
   const esQrDuna = esDuna && dunaModo === 'qr';
 
   /* Métodos que el backend deja "Pagado" en el mismo POST de
@@ -310,9 +322,16 @@ const Pago: React.FC = () => {
      propósito: aunque su categoría es "local", el backend lo deja
      "Pendiente" (genera una factura Comnet aparte, no confirma el pago
      al momento -- ver PagoEfectivo en functionPagos.js). */
-  const quedaPagadoAlInstante = ['Efectivo-Local', 'Tarjeta-Local', 'Efectivo-QR'].includes(met.key);
+  const quedaPagadoAlInstante = ['Efectivo-Local', 'Tarjeta-Local', 'Efectivo-QR', 'Cortesia'].includes(met.key);
 
-  const precioNum   = Number(st.precio        || 0);
+  /* Descuento 50% (discapacidad / tercera edad): usa el precio_discapacidad de la localidad, igual que el panel web.
+     Naipes: solo marca la entrada (tarifa "Promocion" en la Factura Final); no cambia el precio.
+     Cortesia: todo $0.00 y no admite descuentos ni tarifas especiales. */
+  const [descDiscapacidad, setDescDiscapacidad] = useState(false);
+  const [naipes, setNaipes] = useState(false);
+  const precioDiscapNum = Number(st.precioDiscapacidad || 0);
+  const aplicaDiscap = descDiscapacidad && precioDiscapNum > 0 && !esCortesia;
+  const precioNum   = esCortesia ? 0 : (aplicaDiscap ? precioDiscapNum : Number(st.precio || 0));
   const cantidadNum = Number(st.cantidad      || 1);
   const factorNum   = Math.max(1, Math.min(10, Math.floor(Number(st.factorBoletos) || 1)));
   // Precios a cobrar (paquetes): con x2, 2 entradas = 1 precio. La comision por boleto sigue siendo por entrada
@@ -330,7 +349,7 @@ const Pago: React.FC = () => {
      total con descuento en pantalla, pero el backend (que en ese modo
      confía en que el frontend ya redujo el precio) no descontaba nada: el
      cliente terminaba pagando el total bruto completo. */
-  const descuentoActivo = descuentos.find(d => d.id === descuentoSel) ?? null;
+  const descuentoActivo = esCortesia ? null : (descuentos.find(d => d.id === descuentoSel) ?? null);
   const aplicaSobreBase = descuentoActivo?.aplica_sobre === 'base';
   const precioParaCalculo = (aplicaSobreBase && descuentoActivo)
     ? precioNum * (1 - descuentoActivo.porcentaje / 100)
@@ -424,6 +443,8 @@ const Pago: React.FC = () => {
     setTarjetaLote('');
     setTarjetaReferencia('');
     setDescuentoSel(null);
+    setDescDiscapacidad(false);
+    setNaipes(false);
     setTipoBoleto('fisico');
     setCodigoFisicoInput('');
     setCodigosFisicos([]);
@@ -736,12 +757,12 @@ const Pago: React.FC = () => {
           factor_boletos:      factorNum,
           ...(st.modalidadCodigo ? { modalidad_codigo: st.modalidadCodigo } : {}),
           localidad_nombre:    st.localidadNombre || '',
-          localidad_precio:    st.precio          || 0,
+          localidad_precio:    precioNum,
           comision_por_boleto: comisionServicio.toFixed(2),
           iva:                 ivaImporte.toFixed(2),
-          discapacida:         false,
+          discapacida:         aplicaDiscap,
           menor:               false,
-          naipes:              false,
+          naipes:              naipes && !esCortesia,
           id_sillas:           st.idSillas        || [],
         }],
         valores: {
@@ -758,7 +779,9 @@ const Pago: React.FC = () => {
         },
         // Descuento marcado por el vendedor (uno por venta). El backend
         // revalida (autorización + evento) y recalcula total_pago.
-        ...(descuentoSel ? { descuento: { id: descuentoSel } } : {}),
+        ...(descuentoSel && !esCortesia ? { descuento: { id: descuentoSel } } : {}),
+        // Cortesia ($0.00): el backend deja todo en 0, valida el permiso y no admite descuentos
+        ...(esCortesia ? { cortesia: true } : {}),
         // Tarjeta física (POS en mano): número de lote y referencia del
         // voucher. El backend también los exige/valida para este método.
         ...(esTarjetaFisica ? { tarjeta_lote: tarjetaLote, tarjeta_referencia: tarjetaReferencia } : {}),
@@ -1280,6 +1303,22 @@ const Pago: React.FC = () => {
               </div>
             </div>
 
+            {!esCortesia && (precioDiscapNum > 0 || metodosDisponibles !== null) && (
+              <div className="pago-card">
+                <h3 className="pago-card-title">Tarifa</h3>
+                {precioDiscapNum > 0 && (
+                  <label className="pago-desc-opt">
+                    <input type="checkbox" checked={descDiscapacidad} onChange={(e) => setDescDiscapacidad(e.target.checked)} />
+                    <span>Descuento 50% · Dis./Ter. edad <strong>${precioDiscapNum.toFixed(2)}</strong> c/u</span>
+                  </label>
+                )}
+                <label className="pago-desc-opt">
+                  <input type="checkbox" checked={naipes} onChange={(e) => setNaipes(e.target.checked)} />
+                  <span>Naipes</span>
+                </label>
+              </div>
+            )}
+
             <div className="pago-card">
               <h3 className="pago-card-title">Método de pago</h3>
               {avisoMetodos ? (
@@ -1455,7 +1494,7 @@ const Pago: React.FC = () => {
               )}
             </div>
 
-            {descuentos.length > 0 && (
+            {descuentos.length > 0 && !esCortesia && (
               <div className="pago-card">
                 <h3 className="pago-card-title">Descuento</h3>
                 <label className="pago-desc-opt">

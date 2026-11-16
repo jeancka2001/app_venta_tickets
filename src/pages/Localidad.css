@@ -331,3 +331,18 @@
   --color: rgba(255, 255, 255, 0.85);
   opacity: 1;
 }
+
+/* Registro masivo: mas de 10 entradas en una sola venta */
+.masivo-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 16px 0;
+  padding: 8px 12px;
+  border: 1px solid var(--ion-color-medium-tint, #92949c);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.masivo-chip small { opacity: 0.7; }
+.masivo-chip input { width: 18px; height: 18px; }
