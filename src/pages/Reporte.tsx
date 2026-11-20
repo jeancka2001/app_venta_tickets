@@ -13,6 +13,7 @@ import { obtenerReporteComisiones, type FilaComision } from '../utils/comisiones
 import { obtenerStaffData } from '../utils/staffAuth';
 import { obtenerVentasSinRegistro, opcionesEventos, resumenPropio, type OpcionEvento, type ResumenSinRegistro } from '../utils/ventasSinRegistro';
 import marcaTickets from '../images/MARCA_TICKETS.png';
+import { BotonMenu } from '../components/MenuPaginas';
 import './Reporte.css';
 
 const hoyStr = () => new Date().toISOString().slice(0, 10);
@@ -118,6 +119,7 @@ const Reporte: React.FC = () => {
     <IonPage>
       <IonHeader>
         <IonToolbar className="reporte-toolbar">
+          <BotonMenu />
           <img src={marcaTickets} alt="T-ickets" className="toolbar-logo" />
           <IonTitle size="small">Mi Reporte</IonTitle>
           <IonButtons slot="end">

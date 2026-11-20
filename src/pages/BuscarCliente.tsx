@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { MS_LOGIN_AUTH_HEADERS } from '../utils/msLoginAuth';
 import marcaTickets from '../images/MARCA_TICKETS.png';
+import { BotonMenu } from '../components/MenuPaginas';
 import { errorDeRuc } from '../utils/identificacion';
 import './BuscarCliente.css';
 
@@ -91,6 +92,7 @@ const BuscarCliente: React.FC = () => {
     <IonPage>
       <IonHeader>
         <IonToolbar className="buscar-toolbar">
+          <BotonMenu />
           <img src={marcaTickets} alt="T-ickets" className="toolbar-logo" />
           <IonTitle size="small">Buscar Cliente</IonTitle>
           <IonButtons slot="end">

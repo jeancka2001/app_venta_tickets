@@ -22,6 +22,13 @@ import { obtenerStaffData } from './utils/staffAuth';
 import { AppLockProvider } from './context/AppLockContext';
 import LockScreen from './components/LockScreen';
 import ConfigBloqueo from './components/ConfigBloqueo';
+import MenuPaginas, { ID_CONTENIDO } from './components/MenuPaginas';
+import Soporte from './pages/Soporte';
+import Devoluciones from './pages/Devoluciones';
+import CorreosMasivos from './pages/CorreosMasivos';
+import Pixeles from './pages/Pixeles';
+import PermisosPaginas from './pages/PermisosPaginas';
+import { puedoVer } from './utils/permisosPaginas';
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/react/css/core.css'; 
@@ -65,11 +72,20 @@ const RutaAdmin: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return esAdmin ? <>{children}</> : <Navigate to="/dashboard/vender" replace />;
 };
 
+/* Páginas que se abren desde el menú: solo si el usuario la tiene habilitada en "Permisos de páginas" (admin ve lo que su
+   configuración diga; sin configuración, los roles de siempre). Si no puede, se lo manda a Vender. */
+const RutaPagina: React.FC<{ clave: string; children: React.ReactNode }> = ({ clave, children }) => {
+  const staff = obtenerStaffData();
+  if (!staff) return <Navigate to="/home" replace />;
+  return puedoVer(clave) ? <>{children}</> : <Navigate to="/dashboard/vender" replace />;
+};
+
 const App: React.FC = () => (
   <IonApp>
     <AppLockProvider>
     <IonReactRouter>
-      <IonRouterOutlet>
+      <MenuPaginas />
+      <IonRouterOutlet id={ID_CONTENIDO}>
         <Route path="/home" element={<Home />} />
         <Route path="/dashboard/*" element={<RutaProtegida><Dashboard /></RutaProtegida>} />
         <Route path="/venta/:codigoEvento" element={<RutaProtegida><VentaEvento /></RutaProtegida>} />
@@ -79,6 +95,11 @@ const App: React.FC = () => (
         <Route path="/comisiones" element={<RutaProtegida><Comisiones /></RutaProtegida>} />
         <Route path="/escanear-boleto" element={<RutaProtegida><EscanearBoleto /></RutaProtegida>} />
         <Route path="/canjear-entradas" element={<RutaProtegida><CanjearEntradas /></RutaProtegida>} />
+        <Route path="/soporte" element={<RutaPagina clave="soporte"><Soporte /></RutaPagina>} />
+        <Route path="/devoluciones" element={<RutaPagina clave="devoluciones"><Devoluciones /></RutaPagina>} />
+        <Route path="/correos-masivos" element={<RutaPagina clave="correos"><CorreosMasivos /></RutaPagina>} />
+        <Route path="/pixeles" element={<RutaPagina clave="meta_pixel"><Pixeles /></RutaPagina>} />
+        <Route path="/permisos-paginas" element={<RutaPagina clave="permisos"><PermisosPaginas /></RutaPagina>} />
         <Route path="/admin/evento-nuevo" element={<RutaAdmin><AdminEventoForm /></RutaAdmin>} />
         <Route path="/admin/evento/:codigoEvento/editar" element={<RutaAdmin><AdminEventoForm /></RutaAdmin>} />
         <Route path="/admin/evento/:codigoEvento" element={<RutaAdmin><AdminEventoDetalle /></RutaAdmin>} />

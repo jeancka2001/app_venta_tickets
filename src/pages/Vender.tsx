@@ -15,6 +15,7 @@ import {
   type MetodoPagoActivo,
 } from '../utils/metodosPago';
 import marcaTickets from '../images/MARCA_TICKETS.png';
+import { BotonMenu } from '../components/MenuPaginas';
 import './Vender.css';
 
 interface Evento {
@@ -139,6 +140,7 @@ const Vender: React.FC = () => {
     <IonPage>
       <IonHeader>
         <IonToolbar className="vender-toolbar">
+          <BotonMenu />
           <IonButtons slot="start">
             <img src={marcaTickets} alt="T-ickets" className="toolbar-logo" />
           </IonButtons>

@@ -1,0 +1,29 @@
+/* Menú lateral (arriba a la izquierda). Mismos colores que el resto de la app: azul noche #1a1e52 y fondo #f4f6fb */
+.menu-paginas { --width: min(82vw, 320px); }
+.menu-toolbar { --background: #1a1e52; --color: #ffffff; }
+.menu-logo { height: 26px; margin-left: 14px; }
+.menu-content { --background: #f4f6fb; }
+
+.menu-usuario { padding: 16px 18px 12px; background: #ffffff; border-bottom: 1px solid #e6e9f4; }
+.menu-usuario-nombre { font-size: 1rem; font-weight: 700; color: #1a1e52; }
+.menu-usuario-perfil { font-size: 0.75rem; color: #6b7a90; text-transform: capitalize; margin-top: 2px; }
+
+.menu-lista { background: transparent; padding: 6px 8px 24px; }
+.menu-lista ion-list-header { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #6b7a90; min-height: 34px; padding-top: 10px; }
+.menu-item { --background: transparent; --border-radius: 12px; --padding-start: 12px; --min-height: 46px; margin: 2px 0; font-size: 0.92rem; font-weight: 600; color: #1a1e52; }
+.menu-item ion-icon { color: #2d358c; font-size: 20px; margin-inline-end: 12px; }
+.menu-item-activo { --background: #e3e7fa; }
+
+/* Botón de las 3 rayitas: queda a la izquierda, al lado del logo */
+.boton-menu-wrap { margin-inline-start: 2px; }
+.boton-menu { --color: #ffffff; --padding-start: 6px; --padding-end: 6px; }
+.boton-menu ion-icon { font-size: 26px; }
+
+@media (prefers-color-scheme: dark) {
+  .menu-content { --background: #101624; }
+  .menu-usuario { background: #161d2e; border-bottom-color: #232c42; }
+  .menu-usuario-nombre { color: #e8ebff; }
+  .menu-item { color: #e8ebff; }
+  .menu-item ion-icon { color: #9aa6ff; }
+  .menu-item-activo { --background: #232c42; }
+}

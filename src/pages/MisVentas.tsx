@@ -10,6 +10,7 @@ import axios from 'axios';
 import { MS_LOGIN_AUTH_HEADERS } from '../utils/msLoginAuth';
 import { obtenerStaffData } from '../utils/staffAuth';
 import marcaTickets from '../images/MARCA_TICKETS.png';
+import { BotonMenu } from '../components/MenuPaginas';
 import './MisVentas.css';
 
 const URL_BASE = 'https://api.t-ickets.com/ms_login/api/v1';
@@ -129,6 +130,7 @@ const MisVentas: React.FC = () => {
     <IonPage>
       <IonHeader>
         <IonToolbar className="misventas-toolbar">
+          <BotonMenu />
           <IonButtons slot="start">
             <img src={marcaTickets} alt="T-ickets" className="toolbar-logo" />
           </IonButtons>

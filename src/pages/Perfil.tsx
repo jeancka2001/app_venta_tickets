@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { obtenerStaffData, logoutStaff } from '../utils/staffAuth';
 import { eliminarCredencialesBiometricas } from '../utils/biometricAuth';
 import marcaTickets from '../images/MARCA_TICKETS.png';
+import { BotonMenu } from '../components/MenuPaginas';
 import { LegalLinks } from '../components/Legal';
 import { useAppLock } from '../context/AppLockContext';
 import { borrarConfigBloqueo, etiquetaBloqueo } from '../utils/bloqueoSesion';
@@ -31,6 +32,7 @@ const Perfil: React.FC = () => {
     <IonPage>
       <IonHeader>
         <IonToolbar className="perfil-toolbar">
+          <BotonMenu />
           <img src={marcaTickets} alt="T-ickets" className="toolbar-logo" />
           <IonTitle size="small">Mi Perfil</IonTitle>
         </IonToolbar>

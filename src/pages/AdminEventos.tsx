@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { listarEventosAdmin, SesionExpiradaError, type EventoAdmin } from '../utils/adminEventos';
 import { logoutStaff } from '../utils/staffAuth';
 import marcaTickets from '../images/MARCA_TICKETS.png';
+import { BotonMenu } from '../components/MenuPaginas';
 import './AdminEventos.css';
 
 const estadoBadge: Record<string, string> = {
@@ -64,6 +65,7 @@ const AdminEventos: React.FC = () => {
     <IonPage>
       <IonHeader>
         <IonToolbar className="admin-toolbar">
+          <BotonMenu />
           <IonButtons slot="start">
             <img src={marcaTickets} alt="T-ickets" className="toolbar-logo" />
           </IonButtons>

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   IonContent, IonHeader, IonPage, IonTitle, IonToolbar,
   IonButtons, IonBackButton, IonButton, IonIcon, IonSpinner, IonText, IonBadge,
-  IonInput, IonCheckbox, IonAlert, IonActionSheet, IonToast, IonModal,
+  IonInput, IonCheckbox, IonAlert, IonActionSheet, IonToast, IonModal, IonSegment, IonSegmentButton, IonLabel,
 } from '@ionic/react';
 import {
   createOutline, swapHorizontalOutline, trashOutline,
@@ -20,6 +20,8 @@ import {
   type DiscrepanciasEvento, type DiscrepanciaFila,
 } from '../utils/adminEventos';
 import { generarYDescargarFacturaEvento } from '../utils/facturaEventoFinal';
+import { PestanaCanales, PestanaInfo, PestanaLocalidadesAsientos } from './AdminEventoPestanas';
+import { puedoVer } from '../utils/permisosPaginas';
 import './AdminEventoDetalle.css';
 
 /* Mismo criterio que normalizeIvaMultiplier() en Evetoespecifico.js: la
@@ -86,6 +88,9 @@ const AdminEventoDetalle: React.FC = () => {
   const [discrepancias, setDiscrepancias] = useState<DiscrepanciasEvento | null>(null);
 
   const [descargandoExcel, setDescargandoExcel] = useState(false);
+  const [pestana, setPestana] = useState<'resumen' | 'asientos' | 'canales' | 'info'>('resumen');
+  /* Misma regla que la web: "Localidades y asientos" es una página de permisos aparte (evento_localidades) */
+  const verAsientos = puedoVer('evento_localidades');
 
   const cargarLocalidades = useCallback(async () => {
     if (!codigoEvento) return;
@@ -311,6 +316,21 @@ const AdminEventoDetalle: React.FC = () => {
         )}
 
         {!cargandoEvento && evento && (
+          <>
+            <IonSegment className="pn-segmentos" scrollable value={pestana} onIonChange={(e) => setPestana(e.detail.value as 'resumen' | 'asientos' | 'canales' | 'info')}>
+              <IonSegmentButton value="resumen"><IonLabel>Resumen</IonLabel></IonSegmentButton>
+              {verAsientos && <IonSegmentButton value="asientos"><IonLabel>Localidades y asientos</IonLabel></IonSegmentButton>}
+              <IonSegmentButton value="canales"><IonLabel>Canales y personal</IonLabel></IonSegmentButton>
+              <IonSegmentButton value="info"><IonLabel>Info</IonLabel></IonSegmentButton>
+            </IonSegment>
+            {pestana !== 'resumen' && (
+              <div className="pn-contenedor">
+                {pestana === 'asientos' && <PestanaLocalidadesAsientos codigoEvento={evento.codigoEvento} />}
+                {pestana === 'canales' && <PestanaCanales codigoEvento={evento.codigoEvento} />}
+                {pestana === 'info' && <PestanaInfo evento={evento} />}
+              </div>
+            )}
+            {pestana === 'resumen' && (
           <div className="admin-detalle-container">
 
             {/* ── Resumen del evento ── */}
@@ -612,6 +632,8 @@ const AdminEventoDetalle: React.FC = () => {
               )}
             </div>
           </div>
+            )}
+          </>
         )}
       </IonContent>
 
