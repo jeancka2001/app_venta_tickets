@@ -78,3 +78,32 @@ export const ventaPersonalEvento = (codigoEvento: string) => pedir(() => axios.g
 export const ventaPersonalGuardarEvento = (codigoEvento: string, config: object) => pedir(() => axios.post(`${RAIZ}/venta_personal/evento`, { codigoEvento, ...config }, { headers: hdr() }));
 export const canalLocalidadGuardar = (codigoEvento: string, localidad: string, venta_publica: number, venta_personal: number) =>
   pedir(() => axios.post(`${RAIZ}/venta_personal/localidad`, { codigoEvento, localidad, venta_publica, venta_personal }, { headers: hdr() }));
+
+/* ---------------- Devoluciones: resolver con comprobante y anular compra ---------------- */
+export const devolucionResolver = (codigoEvento: string, id: number, datos: { nota?: string; monto?: number | string | null; mensaje?: string; notificar?: boolean; comprobantes?: { nombre: string; datos: string }[] }) =>
+  pedir(() => axios.post(`${RAIZ}/devolucion/resolver`, { codigoEvento, id, ...datos }, { headers: hdr(), timeout: 60000 }));
+export const devolucionAnularCompra = (codigoEvento: string, id: number, compras?: number[]) =>
+  pedir(() => axios.post(`${RAIZ}/devolucion/anular-compra`, { codigoEvento, id, ...(compras && compras.length ? { compras } : {}) }, { headers: hdr(), timeout: 60000 }));
+
+/* ---------------- Evento: diseño de localidades, localidades nuevas y opciones de compra ---------------- */
+export interface Diseno {
+  tipo: 'correlativo' | 'fila' | 'mesa';
+  cantidad?: number;
+  ocupados?: number;
+  factor?: number;
+  filas?: { fila: string; sillas?: number; ocupados?: number; mesas?: { mesa: string; sillas: number; ocupados?: number }[] }[];
+}
+export const disenoRevisar = (codigoEvento: string, id_localidades: number, diseno: object) =>
+  pedir(() => axios.post(`${RAIZ}/evento_localidades/diseno`, { codigoEvento, id_localidades, diseno, aplicar: false }, { headers: hdr() }));
+export const disenoAplicar = (codigoEvento: string, id_localidades: number, diseno: object) =>
+  pedir(() => axios.post(`${RAIZ}/evento_localidades/diseno`, { codigoEvento, id_localidades, diseno, aplicar: true }, { headers: hdr(), timeout: 120000 }));
+export const localidadNueva = (codigoEvento: string, datos: object) =>
+  pedir(() => axios.post(`${RAIZ}/evento_localidades/nueva`, { codigoEvento, ...datos }, { headers: hdr(), timeout: 120000 }));
+export const opcionCompraGuardar = (codigoEvento: string, id_localidades: number, datos: object) =>
+  pedir(() => axios.post(`${RAIZ}/evento_localidades/modalidad`, { codigoEvento, id_localidades, ...datos }, { headers: hdr() }));
+
+/* ---------------- Evento: usuarios por localidad y vendedores sin comisiones ---------------- */
+export const canalUsuariosLocalidad = (codigoEvento: string, localidad: string, usuarios: number[]) =>
+  pedir(() => axios.post(`${RAIZ}/venta_personal/localidad_usuarios`, { codigoEvento, localidad, usuarios }, { headers: hdr() }));
+export const usuarioSinComisiones = (id_usuario: number, sin_comisiones: boolean) =>
+  pedir(() => axios.post(`${RAIZ}/venta_personal/usuario`, { id_usuario, sin_comisiones }, { headers: hdr() }));

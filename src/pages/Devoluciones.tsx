@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { IonSearchbar, IonButton, IonTextarea, IonSelect, IonSelectOption, IonInput, IonCheckbox, IonRefresher, IonRefresherContent } from '@ionic/react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { IonSearchbar, IonButton, IonTextarea, IonSelect, IonSelectOption, IonInput, IonCheckbox, IonRefresher, IonRefresherContent, IonAlert } from '@ionic/react';
 import PanelPagina from '../components/PanelPagina';
 import { listarEventosAdmin, type EventoAdmin } from '../utils/adminEventos';
-import { devolucionAdmin, devolucionComentar, devolucionConfig, devolucionEstado, devolucionesResumen } from '../utils/panelesAdmin';
+import { devolucionAdmin, devolucionAnularCompra, devolucionComentar, devolucionConfig, devolucionEstado, devolucionResolver, devolucionesResumen } from '../utils/panelesAdmin';
+import { archivoABase64, type ArchivoBase64 } from '../utils/imagenes';
 
 /* Admin > Devoluciones: si un evento se cancela, se habilita su página de devolución (/devolucion/<código> en la web) y aquí se
    gestionan las solicitudes: ver los datos de la cuenta, cambiar el estado y dejar comentarios. Misma página que la web (versión de bolsillo). */
@@ -69,6 +70,9 @@ interface Solicitud {
   id: number; codigo: string; nombre: string; cedula: string; email: string; telefono: string; cantidad: number; valor: number; banco: string; tipo_cuenta: string; numero_cuenta: string;
   titular: string; cedula_titular: string; titular_distinto?: boolean; estado: string; nota?: string; fecha?: string; observacion?: string; res_monto?: number | null;
   comentarios?: { autor: string; comentario: string; creado_en: string }[];
+  res_mensaje?: string; res_correo_estado?: string; res_correo_detalle?: string; res_link?: string;
+  compra_ids?: string[]; compra_anulada?: boolean; anulacion_detalle?: string | null;
+  ventas?: { id: number | string; entradas?: number; estado_pago?: string; incluye_otros_eventos?: boolean }[];
 }
 
 const DetalleEvento: React.FC<{ evento: EventoAdmin; onVolver: () => void }> = ({ evento, onVolver }) => {
@@ -153,6 +157,17 @@ const DetalleSolicitud: React.FC<{ solicitud: Solicitud; codigoEvento: string; o
   const [toast, setToast] = useState('');
   const [guardando, setGuardando] = useState(false);
   useEffect(() => { setEstado(s.estado); }, [s.estado]);
+  // Resolver (devuelta): valor, aviso por correo y comprobantes
+  const [monto, setMonto] = useState(() => String(s.res_monto ?? s.valor ?? ''));
+  const [mensaje, setMensaje] = useState(s.res_mensaje || '');
+  const [avisar, setAvisar] = useState(true);
+  const [archivos, setArchivos] = useState<ArchivoBase64[]>([]);
+  const [leyendo, setLeyendo] = useState(false);
+  const entrada = useRef<HTMLInputElement>(null);
+  // Anular compra
+  const [elegidas, setElegidas] = useState<string[]>([]);
+  const [confirmarAnular, setConfirmarAnular] = useState(false);
+  const [confirmarResolver, setConfirmarResolver] = useState(false);
 
   const ejecutar = async (fn: () => Promise<{ success?: boolean; message?: string }>, ok: string, despues?: () => void) => {
     setGuardando(true);
@@ -160,6 +175,28 @@ const DetalleSolicitud: React.FC<{ solicitud: Solicitud; codigoEvento: string; o
     setGuardando(false);
     if (r.success) { setToast(ok); despues?.(); onCambio(); } else setToast(r.message || 'No se pudo guardar');
   };
+
+  const agregarArchivos = async (lista: FileList | null) => {
+    if (!lista || !lista.length) return;
+    setLeyendo(true);
+    try {
+      const nuevos: ArchivoBase64[] = [];
+      for (const f of Array.from(lista)) nuevos.push(await archivoABase64(f));
+      setArchivos((a) => [...a, ...nuevos].slice(0, 3));
+      if (archivos.length + nuevos.length > 3) setToast('Máximo 3 comprobantes por vez.');
+    } catch (e) { setToast(e instanceof Error ? e.message : 'No se pudo leer el archivo'); } finally { setLeyendo(false); if (entrada.current) entrada.current.value = ''; }
+  };
+  const resolver = () => ejecutar(
+    () => devolucionResolver(codigoEvento, s.id, { nota, monto: monto.trim() === '' ? null : monto, mensaje: mensaje.trim(), notificar: avisar && !!s.email, comprobantes: archivos.map((a) => ({ nombre: a.nombre, datos: a.datos })) }),
+    avisar && s.email ? 'Resuelta. El correo al cliente está en camino.' : 'Resuelta',
+    () => { setArchivos([]); setNota(''); });
+  const compras = (s.compra_ids || []).filter(Boolean);
+  const estadoCompra = (id: string) => (s.ventas || []).find((v) => String(v.id) === String(id));
+  const pendientes = compras.filter((id) => estadoCompra(id)?.estado_pago !== 'Anulado');
+  const anular = () => ejecutar(
+    () => devolucionAnularCompra(codigoEvento, s.id, pendientes.length > 1 ? elegidas.map(Number) : undefined),
+    'Compra anulada: asientos liberados con QR nuevo', () => setElegidas([]));
+  const puedeResolver = !['Rechazada', 'Cancelada'].includes(s.estado);
 
   return (
     <PanelPagina titulo={`Solicitud ${s.codigo}`} toast={toast} onToastCerrado={() => setToast('')} acciones={<IonButton onClick={onVolver}>Lista</IonButton>}>
@@ -184,8 +221,44 @@ const DetalleSolicitud: React.FC<{ solicitud: Solicitud; codigoEvento: string; o
         </div>
         <div className="pn-campo"><IonInput label="Nota (opcional)" labelPlacement="floating" fill="outline" value={nota} maxlength={500} onIonInput={(e) => setNota(String(e.detail.value || ''))} /></div>
         <IonButton expand="block" fill="outline" className="pn-campo" disabled={guardando || estado === s.estado} onClick={() => ejecutar(() => devolucionEstado(codigoEvento, s.id, estado, nota), 'Estado actualizado', () => setNota(''))}>Cambiar estado</IonButton>
-        <p className="pn-sub" style={{ marginTop: 8 }}>Para resolver con comprobante y aviso por correo, o anular la compra, usa la página web de Devoluciones.</p>
       </div>
+      {puedeResolver && (
+        <div className="pn-card">
+          <h3 className="pn-titulo">{s.estado === 'Devuelta' ? 'Devolución resuelta' : 'Resolver: ya se devolvió el dinero'}</h3>
+          {s.estado === 'Devuelta' && s.res_correo_estado && <p className="pn-sub">Aviso por correo: <b>{s.res_correo_estado}</b>{s.res_correo_detalle ? ` · ${s.res_correo_detalle}` : ''}</p>}
+          {s.res_link && <IonButton fill="outline" size="small" href={s.res_link} target="_blank">Ver la página del cliente</IonButton>}
+          <div className="pn-campo"><IonInput type="number" inputmode="decimal" label="Valor devuelto $" labelPlacement="floating" fill="outline" value={monto} onIonInput={(e) => setMonto(String(e.detail.value || ''))} /></div>
+          <div className="pn-campo"><IonTextarea label="Mensaje para el cliente (opcional)" labelPlacement="floating" fill="outline" rows={2} value={mensaje} onIonInput={(e) => setMensaje(String(e.detail.value || ''))} /></div>
+          <div className="pn-switch"><span className="pn-switch-nombre">Avisarle por correo{s.email ? <span className="pn-lista-pie"> · {s.email}</span> : <span className="pn-lista-pie"> · sin correo</span>}</span><IonCheckbox checked={avisar && !!s.email} disabled={!s.email} onIonChange={(e) => setAvisar(e.detail.checked)} /></div>
+          <div className="pn-campo">
+            <input ref={entrada} type="file" accept="image/*,application/pdf" multiple style={{ display: 'none' }} onChange={(e) => agregarArchivos(e.target.files)} />
+            <IonButton expand="block" fill="outline" disabled={leyendo || archivos.length >= 3} onClick={() => entrada.current?.click()}>{leyendo ? 'Preparando…' : 'Agregar foto del comprobante'}</IonButton>
+            {archivos.map((a, i) => <div key={i} className="pn-switch"><span className="pn-switch-nombre">{a.nombre}</span><IonButton size="small" fill="clear" color="danger" onClick={() => setArchivos((l) => l.filter((_, j) => j !== i))}>Quitar</IonButton></div>)}
+            <p className="pn-sub" style={{ marginTop: 6 }}>Hasta 3 fotos o PDF. El cliente las ve en su página privada y en el correo.</p>
+          </div>
+          <IonButton expand="block" className="pn-boton-p pn-campo" disabled={guardando || leyendo} onClick={() => setConfirmarResolver(true)}>{s.estado === 'Devuelta' ? 'Guardar y avisar de nuevo' : 'Marcar como Devuelta'}</IonButton>
+        </div>
+      )}
+
+      {s.estado === 'Devuelta' && (
+        <div className="pn-card">
+          <h3 className="pn-titulo">Compra del cliente</h3>
+          {s.compra_anulada ? (
+            <><p className="pn-sub">La compra ya está anulada: sus asientos quedaron libres con QR nuevo.</p>{s.anulacion_detalle && <div className="pn-cuerpo" style={{ marginTop: 8 }}>{s.anulacion_detalle}</div>}</>
+          ) : (
+            <>
+              <p className="pn-sub">Anular la compra libera los asientos y cambia el QR de sus entradas (las viejas dejan de servir). Hazlo cuando ya devolviste el dinero.</p>
+              {pendientes.length > 1 && pendientes.map((id) => {
+                const v = estadoCompra(id);
+                return <div key={id} className="pn-switch"><span className="pn-switch-nombre">Compra {id}{v?.entradas ? <span className="pn-lista-pie"> · {v.entradas} entrada{v.entradas === 1 ? '' : 's'}</span> : null}{v?.incluye_otros_eventos ? <span className="pn-lista-pie"> · incluye otros eventos</span> : null}</span><IonCheckbox checked={elegidas.includes(id)} onIonChange={(e) => setElegidas((x) => (e.detail.checked ? [...new Set([...x, id])] : x.filter((i) => i !== id)))} /></div>;
+              })}
+              <IonButton expand="block" color="danger" fill="outline" className="pn-campo" disabled={guardando || pendientes.length === 0 || (pendientes.length > 1 && elegidas.length === 0)} onClick={() => setConfirmarAnular(true)}>Anular compra y liberar asientos</IonButton>
+              {pendientes.length === 0 && <p className="pn-sub" style={{ marginTop: 6 }}>Esta solicitud no tiene compras pendientes de anular.</p>}
+            </>
+          )}
+        </div>
+      )}
+
       <div className="pn-card">
         <h3 className="pn-titulo">Comentarios del equipo</h3>
         <div className="pn-historial">
@@ -195,6 +268,12 @@ const DetalleSolicitud: React.FC<{ solicitud: Solicitud; codigoEvento: string; o
         <div className="pn-campo"><IonTextarea label="Agregar un comentario" labelPlacement="floating" fill="outline" rows={2} value={comentario} maxlength={1000} onIonInput={(e) => setComentario(String(e.detail.value || ''))} /></div>
         <IonButton expand="block" className="pn-boton-p pn-campo" disabled={guardando || !comentario.trim()} onClick={() => ejecutar(() => devolucionComentar(codigoEvento, s.id, comentario), 'Comentario guardado', () => setComentario(''))}>Guardar comentario</IonButton>
       </div>
+      <IonAlert isOpen={confirmarResolver} onDidDismiss={() => setConfirmarResolver(false)} header="¿Marcar como devuelta?"
+        message={`${monto ? `Valor $${monto}. ` : ''}${avisar && s.email ? `Se le avisará a ${s.email}.` : 'No se le avisará por correo.'}`}
+        buttons={[{ text: 'No', role: 'cancel' }, { text: 'Sí', handler: () => { resolver(); } }]} />
+      <IonAlert isOpen={confirmarAnular} onDidDismiss={() => setConfirmarAnular(false)} header="¿Anular la compra?"
+        message="Se liberan los asientos y las entradas viejas dejan de servir. No se puede deshacer."
+        buttons={[{ text: 'No', role: 'cancel' }, { text: 'Sí, anular', role: 'destructive', handler: () => { anular(); } }]} />
     </PanelPagina>
   );
 };
