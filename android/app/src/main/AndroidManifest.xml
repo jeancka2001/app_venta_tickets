@@ -36,4 +36,7 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+    <!-- El escáner de ML Kit fija su pantalla en vertical y eso hace que Google Play EXIJA pantalla vertical: así no se excluye ningún dispositivo -->
+    <uses-feature android:name="android.hardware.screen.portrait" android:required="false" />
+    <uses-feature android:name="android.hardware.screen.landscape" android:required="false" />
 </manifest>
