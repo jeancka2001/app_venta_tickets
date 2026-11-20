@@ -39,6 +39,12 @@ export const PAGINAS_APP: PaginaApp[] = [
   { clave: 'permisos', nombre: 'Permisos de páginas', ruta: '/permisos-paginas', icono: 'key', seccion: 'Administración', roles: ['admin'] },
 ];
 
+/* Páginas de la web que la app usa solo para decidir si muestra un botón (no tienen pantalla propia en el menú) */
+const ROLES_EXTRA: Record<string, string[]> = {
+  // Buscar cliente > Editar datos (en el backend: PREDETERMINADAS.suscriptores)
+  suscriptores: ADMINS,
+};
+
 const norm = (p: unknown) => String(p ?? '').trim().toLowerCase();
 
 /* ---------- caché por usuario (para que el menú aparezca al instante y se actualice solo) ---------- */
@@ -92,8 +98,8 @@ export const puedeVerClave = (clave: string, perfil?: string, paginas: string[] 
   if (!p) return false;
   if (clave === 'permisos' && p === 'admin') return true;
   if (Array.isArray(paginas)) return paginas.includes(clave);
-  const pagina = PAGINAS_APP.find((x) => x.clave === clave);
-  return !!pagina && pagina.roles.includes(p);
+  const roles = PAGINAS_APP.find((x) => x.clave === clave)?.roles ?? ROLES_EXTRA[clave] ?? [];
+  return roles.includes(p);
 };
 
 export const puedoVer = (clave: string): boolean => puedeVerClave(clave, obtenerStaffData()?.perfil);

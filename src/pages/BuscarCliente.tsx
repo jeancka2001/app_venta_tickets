@@ -10,6 +10,10 @@ import { MS_LOGIN_AUTH_HEADERS } from '../utils/msLoginAuth';
 import marcaTickets from '../images/MARCA_TICKETS.png';
 import { BotonMenu } from '../components/MenuPaginas';
 import { errorDeRuc } from '../utils/identificacion';
+import { puedoVer } from '../utils/permisosPaginas';
+import { clienteDeRespuesta, type ClienteDatos } from '../utils/clientesAdmin';
+import EditarCliente from '../components/EditarCliente';
+import './Paneles.css';
 import './BuscarCliente.css';
 
 const URL_BASE = 'https://api.t-ickets.com/ms_login/api/v1';
@@ -59,6 +63,8 @@ const BuscarCliente: React.FC = () => {
   const [buscado, setBuscado]     = useState(false);
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [nombreCliente, setNombreCliente] = useState('');
+  const [cliente, setCliente] = useState<ClienteDatos | null>(null);
+  const [editando, setEditando] = useState(false);
   const [error, setError]         = useState('');
 
   const buscar = async () => {
@@ -69,6 +75,7 @@ const BuscarCliente: React.FC = () => {
     setBuscando(true);
     setError('');
     setBuscado(false);
+    setCliente(null);
     try {
       const [{ data: regs }, { data: cli }] = await Promise.all([
         axios.post(`${URL_BASE}/listarRegistros`, { cedula: ced }, { headers: API_HDR }),
@@ -76,6 +83,7 @@ const BuscarCliente: React.FC = () => {
       ]);
       setRegistros(Array.isArray(regs?.data) ? regs.data : []);
       setNombreCliente(cli?.success ? (cli.data?.nombreCompleto ?? '') : '');
+      setCliente(cli?.success ? clienteDeRespuesta({ ...cli.data, cedula: cli.data?.cedula ?? ced }) : null);
       setBuscado(true);
     } catch {
       setError('Error de conexión al buscar el cliente.');
@@ -128,7 +136,16 @@ const BuscarCliente: React.FC = () => {
 
           {buscado && (
             <>
-              {nombreCliente && (
+              {cliente ? (
+                <div className="pn-card" style={{ marginBottom: 12 }}>
+                  <div className="pn-lista-top">
+                    <span className="pn-lista-nombre">{cliente.nombreCompleto || nombreCliente} · {cliente.cedula || cedula}</span>
+                    {puedoVer('suscriptores') && <IonButton size="small" fill="outline" onClick={() => setEditando(true)}>Editar datos</IonButton>}
+                  </div>
+                  {[['Correo', cliente.email], ['Celular', cliente.movil], ['Ciudad', cliente.ciudad], ['Dirección', cliente.direccion]]
+                    .filter(([, v]) => v).map(([k, v]) => <div key={k} className="pn-fila"><span className="pn-lbl">{k}</span><span className="pn-val">{v}</span></div>)}
+                </div>
+              ) : nombreCliente && (
                 <p className="buscar-nombre-cliente">{nombreCliente} · {cedula}</p>
               )}
 
@@ -175,6 +192,10 @@ const BuscarCliente: React.FC = () => {
           )}
         </div>
       </IonContent>
+      {editando && cliente && (
+        <EditarCliente cliente={cliente} onCerrar={() => setEditando(false)}
+          onGuardado={(c) => { setCliente(c); setNombreCliente(c.nombreCompleto); setEditando(false); }} />
+      )}
     </IonPage>
   );
 };
