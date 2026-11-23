@@ -54,7 +54,13 @@ const Pixeles: React.FC = () => {
         <>
           <div className="pn-card">
             <h3 className="pn-titulo">Meta (Facebook / Instagram) · toda la página</h3>
-            <p className="pn-sub">{meta.estado || (meta.activo ? 'Activo' : 'Apagado')}{meta.tieneToken ? ` · token ····${meta.tokenFinal || ''}` : ' · sin token de la API de Conversiones'}</p>
+            <p className="pn-sub">{meta.activo ? 'Activo' : 'Apagado'}{meta.tieneToken ? ` · token ····${meta.tokenFinal || ''}` : ' · sin token de la API de Conversiones'}</p>
+            {meta.estado && typeof meta.estado === 'object' && (
+              <p className="pn-sub">
+                Últimos 7 días: {Number(meta.estado.comprasWeb) || 0} compras web · {Number(meta.estado.enviadas) || 0} enviadas · {Number(meta.estado.porEnviar) || 0} por enviar · {Number(meta.estado.descartadas) || 0} descartadas
+                {meta.estado.ultimoError ? ` · último error (compra ${String(meta.estado.ultimoError.compra)}): ${String(meta.estado.ultimoError.error)}` : ''}
+              </p>
+            )}
             <div className="pn-switch"><span className="pn-switch-nombre">Activo</span><IonCheckbox checked={fm.activo} onIonChange={(e) => setFm({ ...fm, activo: e.detail.checked })} /></div>
             <div className="pn-campo"><IonInput label="ID del píxel" labelPlacement="floating" fill="outline" inputmode="numeric" value={fm.pixelId} onIonInput={(e) => setFm({ ...fm, pixelId: String(e.detail.value || '') })} /></div>
             <div className="pn-campo"><IonInput label={meta.tieneToken ? 'Token nuevo (vacío = se mantiene)' : 'Token de la API de Conversiones'} labelPlacement="floating" fill="outline" type="password" value={fm.capiToken} onIonInput={(e) => setFm({ ...fm, capiToken: String(e.detail.value || '') })} /></div>
