@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  IonMenu, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem, IonIcon, IonLabel, IonListHeader, IonButton, IonButtons,
+  IonMenu, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem, IonIcon, IonLabel, IonListHeader, IonButtons, IonMenuButton,
 } from '@ionic/react';
-import { menuController } from '@ionic/core';
 import {
   menuOutline, pricetagOutline, statsChartOutline, shieldCheckmarkOutline, peopleOutline, cashOutline, cardOutline, returnDownBackOutline,
   helpBuoyOutline, mailOutline, analyticsOutline, keyOutline, searchOutline, timeOutline, personCircleOutline,
@@ -28,14 +27,21 @@ const FIJAS = [
   { nombre: 'Mi perfil', ruta: '/dashboard/perfil', icono: personCircleOutline },
 ];
 
-/* Botón de las 3 rayitas (arriba a la izquierda) que abre el menú */
+/* Botón de las 3 rayitas (arriba a la izquierda) que abre el menú.
+   Es el IonMenuButton de Ionic: abre el menú con el MISMO controlador que usa <IonMenu>. Antes se llamaba a menuController importado de
+   '@ionic/core', que es OTRA copia del controlador (la de @ionic/react viene de '@ionic/core/components'): no encontraba el menú y el botón
+   no hacía nada (se notó al pasar la app a Android). */
 export const BotonMenu: React.FC = () => (
   <IonButtons slot="start" className="boton-menu-wrap">
-    <IonButton onClick={() => menuController.open(ID_MENU)} aria-label="Abrir el menú" className="boton-menu">
-      <IonIcon icon={menuOutline} slot="icon-only" />
-    </IonButton>
+    <IonMenuButton menu={ID_MENU} autoHide={false} className="boton-menu" aria-label="Abrir el menú" />
   </IonButtons>
 );
+
+/* Cierra el menú desde el propio elemento (no depende de ningún controlador global ni del id del DOM) */
+let elementoMenu: HTMLIonMenuElement | null = null;
+const cerrarMenu = async () => {
+  if (elementoMenu && typeof elementoMenu.close === 'function') await elementoMenu.close();
+};
 
 /* Menú lateral con TODAS las páginas que el usuario tiene habilitadas (según "Permisos de páginas"). Se actualiza solo:
    al abrirlo, al volver a la app y cada 5 minutos — si le habilitan o quitan una página, el menú cambia sin cerrar sesión. */
@@ -65,7 +71,7 @@ const MenuPaginas: React.FC = () => {
   useEffect(() => { recalcular(); actualizarMisPaginas(); }, [staff?.id, recalcular]);
 
   const ir = async (ruta: string) => {
-    await menuController.close(ID_MENU);
+    await cerrarMenu();
     navigate(ruta);
   };
 
@@ -80,7 +86,7 @@ const MenuPaginas: React.FC = () => {
   );
 
   return (
-    <IonMenu menuId={ID_MENU} contentId={ID_CONTENIDO} type="overlay" disabled={!staff} swipeGesture={false} className="menu-paginas"
+    <IonMenu ref={(c) => { elementoMenu = ((c as unknown as { el?: HTMLIonMenuElement } | null)?.el ?? (c as unknown as HTMLIonMenuElement | null)); }} menuId={ID_MENU} contentId={ID_CONTENIDO} type="overlay" disabled={!staff} swipeGesture={false} className="menu-paginas"
       onIonWillOpen={() => { recalcular(); actualizarMisPaginas(); }}>
       <IonHeader>
         <IonToolbar className="menu-toolbar">
