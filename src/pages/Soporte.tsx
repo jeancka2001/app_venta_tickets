@@ -14,7 +14,7 @@ const AYUDA: Record<string, string> = {
   Abierto: 'Recién llegado, nadie lo ha tomado.', 'En proceso': 'Un asesor lo está revisando.', Resuelto: 'Ya se atendió el caso del cliente.', Cerrado: 'Terminado, sin más que hacer.',
 };
 const TIPO_NOTA: Record<string, { t: string; c: string }> = {
-  nota: { t: 'Nota interna', c: '' }, publica: { t: 'Visible para el cliente', c: 'pn-nota-publica' }, estado: { t: 'Estado', c: 'pn-nota-estado' }, sistema: { t: 'Sistema', c: '' },
+  cliente: { t: 'Mensaje del cliente (chat)', c: 'pn-nota-estado' }, nota: { t: 'Nota interna', c: '' }, publica: { t: 'Respuesta al cliente', c: 'pn-nota-publica' }, estado: { t: 'Estado', c: 'pn-nota-estado' }, sistema: { t: 'Sistema', c: '' },
 };
 
 const hace = (v?: string) => {
@@ -38,7 +38,7 @@ const enlaceWhatsApp = (tel?: string) => {
 
 interface Ticket {
   id: number; codigo: string; categoria_texto: string; cedula?: string; nombre?: string; email?: string; telefono?: string; codigoEvento?: string;
-  descripcion: string; estado: string; operador?: string; id_operador?: number; creado_en?: string;
+  descripcion: string; estado: string; operador?: string; id_operador?: number; creado_en?: string; canal?: string; esperando_equipo?: boolean;
 }
 interface Nota { id: number; autor: string; tipo: string; texto: string; creado_en: string }
 
@@ -93,6 +93,7 @@ const ListaSoporte: React.FC = () => {
               <span className="pn-lista-nombre">{t.codigo} · {t.nombre || 'Sin nombre'}</span>
               <span className={`pn-badge ${BADGE[t.estado] || 'pn-b-gris'}`}>{t.estado}</span>
             </div>
+            {t.esperando_equipo && <span className="pn-badge pn-b-rojo" style={{ alignSelf: 'flex-start' }}>Espera respuesta</span>}
             <span className="pn-lista-texto">{t.descripcion}</span>
             <span className="pn-lista-pie">{t.categoria_texto} · {t.telefono || t.cedula || ''} · {hace(t.creado_en)}{t.operador ? ` · ${t.operador}` : ''}</span>
           </div>
@@ -110,13 +111,16 @@ const DetalleTicket: React.FC<{ id: number; onVolver: () => void }> = ({ id, onV
   const [nota, setNota] = useState('');
   const [comentario, setComentario] = useState('');
   const [publico, setPublico] = useState(false);
+  const publicoElegido = useRef(false); // si el equipo ya eligió a mano, no se cambia solo
   const [guardando, setGuardando] = useState(false);
 
   const cargar = useCallback(async () => {
     const r = await soporteDetalle(id);
-    if (r.success) { setD({ ticket: r.ticket, notas: r.notas }); setEstado(r.ticket.estado); setError(''); } else setError(r.message || 'No se pudo cargar el ticket');
+    if (r.success) { setD({ ticket: r.ticket, notas: r.notas }); setEstado((e) => e || r.ticket.estado); setPublico((p) => (publicoElegido.current ? p : r.ticket.canal === 'web')); setError(''); } else setError(r.message || 'No se pudo cargar el ticket');
   }, [id]);
   useEffect(() => { cargar(); }, [cargar]);
+  // Con el ticket abierto se revisa si el cliente escribió algo nuevo
+  useEffect(() => { const i = setInterval(cargar, 15000); return () => clearInterval(i); }, [cargar]);
 
   const ejecutar = async (accion: () => Promise<{ success?: boolean; message?: string }>, ok: string, despues?: () => void) => {
     setGuardando(true);
@@ -141,7 +145,8 @@ const DetalleTicket: React.FC<{ id: number; onVolver: () => void }> = ({ id, onV
           </div>
 
           <div className="pn-card">
-            <h3 className="pn-titulo">Lo que escribió el cliente</h3>
+            {t.esperando_equipo && <div className="pn-aviso" style={{ marginBottom: 10 }}>El cliente escribió y espera tu respuesta: contéstale abajo y la verá en el chat de la página.</div>}
+            <h3 className="pn-titulo">{t.canal === 'web' ? 'Primer mensaje del cliente (chat de la página)' : 'Lo que escribió el cliente'}</h3>
             <div className="pn-cuerpo">{t.descripcion}</div>
           </div>
 
@@ -171,10 +176,10 @@ const DetalleTicket: React.FC<{ id: number; onVolver: () => void }> = ({ id, onV
                 </div>
               ))}
             </div>
-            <div className="pn-campo"><IonTextarea label="Agregar un comentario" labelPlacement="floating" fill="outline" rows={3} value={comentario} maxlength={1000} onIonInput={(e) => setComentario(String(e.detail.value || ''))} /></div>
-            <div className="pn-switch"><span className="pn-switch-nombre">Que lo vea el cliente cuando consulte su ticket en el chat</span><IonCheckbox checked={publico} onIonChange={(e) => setPublico(e.detail.checked)} /></div>
+            <div className="pn-campo"><IonTextarea label={publico ? 'Respuesta para el cliente' : 'Nota interna (el cliente no la ve)'} labelPlacement="floating" fill="outline" rows={3} value={comentario} maxlength={1000} onIonInput={(e) => setComentario(String(e.detail.value || ''))} /></div>
+            <div className="pn-switch"><span className="pn-switch-nombre">Responder al cliente: lo verá en el chat de la página</span><IonCheckbox checked={publico} onIonChange={(e) => { publicoElegido.current = true; setPublico(e.detail.checked); }} /></div>
             <IonButton expand="block" className="pn-boton-p" disabled={guardando || !comentario.trim()}
-              onClick={() => ejecutar(() => soporteComentar(t.id, comentario, publico), 'Comentario guardado', () => { setComentario(''); setPublico(false); })}>Guardar comentario</IonButton>
+              onClick={() => ejecutar(() => soporteComentar(t.id, comentario, publico), 'Comentario guardado', () => { setComentario(''); setPublico(false); })}>{publico ? 'Enviar respuesta' : 'Guardar nota'}</IonButton>
           </div>
         </>
       )}
