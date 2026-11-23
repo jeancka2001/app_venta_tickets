@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { IonSearchbar, IonButton, IonIcon, IonTextarea, IonCheckbox, IonSelect, IonSelectOption, IonInput, IonRefresher, IonRefresherContent } from '@ionic/react';
 import { logoWhatsapp, arrowBackOutline } from 'ionicons/icons';
-import PanelPagina from '../components/PanelPagina';
+import PanelPagina, { PaginaFija } from '../components/PanelPagina';
 import { soporteComentar, soporteDetalle, soporteEstado, soporteLista, soporteTomar } from '../utils/panelesAdmin';
 
 /* Admin > Soporte: tickets que los clientes crean desde el chat de WhatsApp de Tickets Ecuador ("Pagos y problemas").
@@ -42,7 +42,7 @@ interface Ticket {
 }
 interface Nota { id: number; autor: string; tipo: string; texto: string; creado_en: string }
 
-const Soporte: React.FC = () => {
+const ListaSoporte: React.FC = () => {
   const [estado, setEstado] = useState('activos');
   const [texto, setTexto] = useState('');
   const [busqueda, setBusqueda] = useState('');
@@ -181,5 +181,7 @@ const DetalleTicket: React.FC<{ id: number; onVolver: () => void }> = ({ id, onV
     </PanelPagina>
   );
 };
+
+const Soporte: React.FC = () => <PaginaFija><ListaSoporte /></PaginaFija>;
 
 export default Soporte;

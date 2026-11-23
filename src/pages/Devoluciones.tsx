@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { IonSearchbar, IonButton, IonTextarea, IonSelect, IonSelectOption, IonInput, IonCheckbox, IonRefresher, IonRefresherContent, IonAlert } from '@ionic/react';
-import PanelPagina from '../components/PanelPagina';
+import PanelPagina, { PaginaFija } from '../components/PanelPagina';
 import { listarEventosAdmin, type EventoAdmin } from '../utils/adminEventos';
 import { devolucionAdmin, devolucionAnularCompra, devolucionComentar, devolucionConfig, devolucionEstado, devolucionResolver, devolucionesResumen } from '../utils/panelesAdmin';
 import { archivoABase64, type ArchivoBase64 } from '../utils/imagenes';
@@ -17,7 +17,7 @@ const fecha = (v?: string) => { const d = v ? new Date(v) : null; return d && !N
 
 interface Resumen { activo?: boolean; vencida?: boolean; total?: number; por_revisar?: number }
 
-const Devoluciones: React.FC = () => {
+const ListaEventos: React.FC = () => {
   const [eventos, setEventos] = useState<EventoAdmin[] | null>(null);
   const [resumen, setResumen] = useState<Record<string, Resumen>>({});
   const [busqueda, setBusqueda] = useState('');
@@ -277,5 +277,7 @@ const DetalleSolicitud: React.FC<{ solicitud: Solicitud; codigoEvento: string; o
     </PanelPagina>
   );
 };
+
+const Devoluciones: React.FC = () => <PaginaFija><ListaEventos /></PaginaFija>;
 
 export default Devoluciones;
