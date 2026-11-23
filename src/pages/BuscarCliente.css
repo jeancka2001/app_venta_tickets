@@ -76,6 +76,7 @@
 .badge-comprobar { --background: #eef0fb; --color: #2d358c; }
 .badge-anulado   { --background: #fde8e8; --color: #7f1d1d; }
 .badge-expirado  { --background: #f0f0f0; --color: #6b7a90; }
+.badge-devuelto  { --background: #e0f2f1; --color: #00695c; }
 
 .registro-detalle {
   display: flex;

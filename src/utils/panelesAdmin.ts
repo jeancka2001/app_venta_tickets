@@ -35,6 +35,7 @@ export const soporteTomar = (id: number) => pedir(() => axios.post(`${RAIZ}/sopo
 
 /* ---------------- Devoluciones ---------------- */
 export const devolucionesResumen = () => pedir(() => axios.get(`${RAIZ}/devolucion/resumen`, { headers: hdr() }));
+export const devolucionesDeCliente = (cedula: string) => pedir(() => axios.get(`${RAIZ}/devolucion/cliente`, { headers: hdr(), params: { cedula } }));
 export const devolucionAdmin = (codigoEvento: string) => pedir(() => axios.get(`${RAIZ}/devolucion/admin`, { headers: hdr(), params: { codigoEvento } }));
 export const devolucionConfig = (codigoEvento: string, config: { activo: boolean; motivo: string; instrucciones: string; fecha_limite: string }) =>
   pedir(() => axios.post(`${RAIZ}/devolucion/config`, { codigoEvento, ...config }, { headers: hdr() }));

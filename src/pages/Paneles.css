@@ -5,6 +5,14 @@
 .pn-card { background: #ffffff; border-radius: 14px; padding: 14px 16px; box-shadow: 0 3px 12px rgba(15, 52, 96, 0.08); }
 .pn-card-click { cursor: pointer; }
 .pn-card-click:active { transform: scale(0.99); }
+/* Solicitud de devolución ya resuelta: toda la tarjeta cambia de color (la etiqueta sola era pequeña para notarlo) */
+.pn-card-resuelto { background: #e7f6ec; border-left: 5px solid #2e9d5b; }
+.pn-sol { border-top: 1px solid #eef0f8; padding: 8px 0; }
+.pn-sol:first-of-type { border-top: none; }
+.pn-sol-resuelta { background: #e7f6ec; border-left: 4px solid #2e9d5b; border-radius: 8px; padding: 8px 10px; margin: 6px 0; }
+.pn-sol-cab { cursor: pointer; }
+.pn-sol-cuerpo { margin-top: 8px; }
+.pn-sub-titulo { margin: 12px 0 4px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #6b7a90; }
 .pn-titulo { font-size: 0.95rem; font-weight: 700; color: #1a1e52; margin: 0 0 8px; }
 .pn-sub { font-size: 0.78rem; color: #6b7a90; margin: 0; line-height: 1.4; }
 .pn-vacio { text-align: center; color: #6b7a90; font-size: 0.85rem; padding: 28px 12px; }
@@ -61,6 +69,8 @@
 
 @media (prefers-color-scheme: dark) {
   .pn-card { background: #161d2e; box-shadow: none; }
+  .pn-card-resuelto, .pn-sol-resuelta { background: #12301f; border-left-color: #3fbf7a; }
+  .pn-sub-titulo { color: #9aa6c7; }
   .pn-titulo, .pn-lista-nombre, .pn-val, .pn-switch-nombre, .pn-nota-texto, .pn-cuerpo { color: #e8ebff; }
   .pn-cuerpo { background: #101624; }
   .pn-lbl, .pn-sub, .pn-lista-pie, .pn-nota-pie, .pn-vacio { color: #9aa6c7; }

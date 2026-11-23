@@ -72,7 +72,7 @@ interface Solicitud {
   comentarios?: { autor: string; comentario: string; creado_en: string }[];
   res_mensaje?: string; res_correo_estado?: string; res_correo_detalle?: string; res_link?: string;
   compra_ids?: string[]; compra_anulada?: boolean; anulacion_detalle?: string | null;
-  ventas?: { id: number | string; entradas?: number; estado_pago?: string; incluye_otros_eventos?: boolean }[];
+  ventas?: { id: number | string; entradas?: number; estado_pago?: string; incluye_otros_eventos?: boolean; liberada?: boolean }[];
 }
 
 const DetalleEvento: React.FC<{ evento: EventoAdmin; onVolver: () => void }> = ({ evento, onVolver }) => {
@@ -136,9 +136,9 @@ const DetalleEvento: React.FC<{ evento: EventoAdmin; onVolver: () => void }> = (
           </div>
           {lista.length === 0 && <div className="pn-vacio">No hay solicitudes.</div>}
           {lista.map((s) => (
-            <div key={s.id} className="pn-card pn-card-click" onClick={() => setSel(s)}>
+            <div key={s.id} className={`pn-card pn-card-click ${s.estado === 'Devuelta' ? 'pn-card-resuelto' : ''}`} onClick={() => setSel(s)}>
               <div className="pn-lista-item">
-                <div className="pn-lista-top"><span className="pn-lista-nombre">{s.codigo} · {s.nombre}</span><span className={`pn-badge ${BADGE[s.estado] || 'pn-b-gris'}`}>{s.estado}</span></div>
+                <div className="pn-lista-top"><span className="pn-lista-nombre">{s.codigo} · {s.nombre}</span><span className={`pn-badge ${BADGE[s.estado] || 'pn-b-gris'}`}>{s.estado === 'Devuelta' ? 'Resuelto ✓' : s.estado}</span></div>
                 <span className="pn-lista-pie">{s.cantidad} entrada{s.cantidad === 1 ? '' : 's'} · {dinero(s.valor)} · {s.banco} · {fecha(s.fecha)}</span>
                 {s.titular_distinto && <span className="pn-lista-pie" style={{ color: '#7a5200' }}>La cuenta es de otra persona</span>}
               </div>
@@ -192,7 +192,7 @@ const DetalleSolicitud: React.FC<{ solicitud: Solicitud; codigoEvento: string; o
     () => { setArchivos([]); setNota(''); });
   const compras = (s.compra_ids || []).filter(Boolean);
   const estadoCompra = (id: string) => (s.ventas || []).find((v) => String(v.id) === String(id));
-  const pendientes = compras.filter((id) => estadoCompra(id)?.estado_pago !== 'Anulado');
+  const pendientes = compras.filter((id) => { const v = estadoCompra(id); return !(v?.liberada ?? v?.estado_pago === 'Anulado'); });
   const anular = () => ejecutar(
     () => devolucionAnularCompra(codigoEvento, s.id, pendientes.length > 1 ? elegidas.map(Number) : undefined),
     'Compra anulada: asientos liberados con QR nuevo', () => setElegidas([]));
@@ -200,7 +200,7 @@ const DetalleSolicitud: React.FC<{ solicitud: Solicitud; codigoEvento: string; o
 
   return (
     <PanelPagina titulo={`Solicitud ${s.codigo}`} toast={toast} onToastCerrado={() => setToast('')} acciones={<IonButton onClick={onVolver}>Lista</IonButton>}>
-      <div className="pn-card">
+      <div className={`pn-card ${s.estado === 'Devuelta' ? 'pn-card-resuelto' : ''}`}>
         <div className="pn-fila"><span className="pn-lbl">Estado</span><span className={`pn-badge ${BADGE[s.estado] || 'pn-b-gris'}`}>{s.estado}</span></div>
         {([['Cliente', s.nombre], ['Cédula', s.cedula], ['Correo', s.email], ['Celular', s.telefono], ['Entradas', `${s.cantidad} · ${dinero(s.valor)}`], ['Recibió', s.res_monto != null ? dinero(s.res_monto) : '']] as [string, string][])
           .filter(([, v]) => v).map(([k, v]) => <div key={k} className="pn-fila"><span className="pn-lbl">{k}</span><span className="pn-val">{v}</span></div>)}
@@ -247,7 +247,7 @@ const DetalleSolicitud: React.FC<{ solicitud: Solicitud; codigoEvento: string; o
             <><p className="pn-sub">La compra ya está anulada: sus asientos quedaron libres con QR nuevo.</p>{s.anulacion_detalle && <div className="pn-cuerpo" style={{ marginTop: 8 }}>{s.anulacion_detalle}</div>}</>
           ) : (
             <>
-              <p className="pn-sub">Anular la compra libera los asientos y cambia el QR de sus entradas (las viejas dejan de servir). Hazlo cuando ya devolviste el dinero.</p>
+              <p className="pn-sub">La compra ya quedó en estado Devuelto (no suma en las ventas y se registra en la Factura Final). Anular la compra libera los asientos y cambia el QR de sus entradas (las viejas dejan de servir). Hazlo cuando ya devolviste el dinero.</p>
               {pendientes.length > 1 && pendientes.map((id) => {
                 const v = estadoCompra(id);
                 return <div key={id} className="pn-switch"><span className="pn-switch-nombre">Compra {id}{v?.entradas ? <span className="pn-lista-pie"> · {v.entradas} entrada{v.entradas === 1 ? '' : 's'}</span> : null}{v?.incluye_otros_eventos ? <span className="pn-lista-pie"> · incluye otros eventos</span> : null}</span><IonCheckbox checked={elegidas.includes(id)} onIonChange={(e) => setElegidas((x) => (e.detail.checked ? [...new Set([...x, id])] : x.filter((i) => i !== id)))} /></div>;

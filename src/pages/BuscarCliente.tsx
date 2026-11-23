@@ -13,6 +13,7 @@ import { errorDeRuc } from '../utils/identificacion';
 import { puedoVer } from '../utils/permisosPaginas';
 import { clienteDeRespuesta, type ClienteDatos } from '../utils/clientesAdmin';
 import EditarCliente from '../components/EditarCliente';
+import DevolucionesCliente from '../components/DevolucionesCliente';
 import './Paneles.css';
 import './BuscarCliente.css';
 
@@ -45,6 +46,7 @@ const estadoColor: Record<string, string> = {
   Comprobar: 'badge-comprobar',
   Anulado:   'badge-anulado',
   Expirado:  'badge-expirado',
+  Devuelto:  'badge-devuelto',
 };
 
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
@@ -148,6 +150,9 @@ const BuscarCliente: React.FC = () => {
               ) : nombreCliente && (
                 <p className="buscar-nombre-cliente">{nombreCliente} · {cedula}</p>
               )}
+
+              {/* Si el cliente pidió devoluciones, aquí aparece toda su información (solo con permiso a Devoluciones) */}
+              <DevolucionesCliente cedula={cliente?.cedula || cedula.trim()} />
 
               {registros.length === 0 && (
                 <div className="buscar-vacio">
