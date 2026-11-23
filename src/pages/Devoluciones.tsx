@@ -195,7 +195,7 @@ const DetalleSolicitud: React.FC<{ solicitud: Solicitud; codigoEvento: string; o
   const pendientes = compras.filter((id) => { const v = estadoCompra(id); return !(v?.liberada ?? v?.estado_pago === 'Anulado'); });
   const anular = () => ejecutar(
     () => devolucionAnularCompra(codigoEvento, s.id, pendientes.length > 1 ? elegidas.map(Number) : undefined),
-    'Compra anulada: asientos liberados con QR nuevo', () => setElegidas([]));
+    'Devolución completada: compra en estado Devuelto, asientos liberados con QR nuevo', () => setElegidas([]));
   const puedeResolver = !['Rechazada', 'Cancelada'].includes(s.estado);
 
   return (
@@ -244,16 +244,16 @@ const DetalleSolicitud: React.FC<{ solicitud: Solicitud; codigoEvento: string; o
         <div className="pn-card">
           <h3 className="pn-titulo">Compra del cliente</h3>
           {s.compra_anulada ? (
-            <><p className="pn-sub">La compra ya está anulada: sus asientos quedaron libres con QR nuevo.</p>{s.anulacion_detalle && <div className="pn-cuerpo" style={{ marginTop: 8 }}>{s.anulacion_detalle}</div>}</>
+            <><p className="pn-sub">Devolución completada: la compra está en estado Devuelto, sus asientos quedaron libres con QR nuevo.</p>{s.anulacion_detalle && <div className="pn-cuerpo" style={{ marginTop: 8 }}>{s.anulacion_detalle}</div>}</>
           ) : (
             <>
-              <p className="pn-sub">La compra ya quedó en estado Devuelto (no suma en las ventas y se registra en la Factura Final). Anular la compra libera los asientos y cambia el QR de sus entradas (las viejas dejan de servir). Hazlo cuando ya devolviste el dinero.</p>
+              <p className="pn-sub">La compra ya quedó en estado Devuelto (no suma en las ventas y se registra en la Factura Final). «Devolución completada» cierra la compra: libera los asientos y cambia el QR de sus entradas (las viejas dejan de servir). Hazlo cuando ya devolviste el dinero.</p>
               {pendientes.length > 1 && pendientes.map((id) => {
                 const v = estadoCompra(id);
                 return <div key={id} className="pn-switch"><span className="pn-switch-nombre">Compra {id}{v?.entradas ? <span className="pn-lista-pie"> · {v.entradas} entrada{v.entradas === 1 ? '' : 's'}</span> : null}{v?.incluye_otros_eventos ? <span className="pn-lista-pie"> · incluye otros eventos</span> : null}</span><IonCheckbox checked={elegidas.includes(id)} onIonChange={(e) => setElegidas((x) => (e.detail.checked ? [...new Set([...x, id])] : x.filter((i) => i !== id)))} /></div>;
               })}
-              <IonButton expand="block" color="danger" fill="outline" className="pn-campo" disabled={guardando || pendientes.length === 0 || (pendientes.length > 1 && elegidas.length === 0)} onClick={() => setConfirmarAnular(true)}>Anular compra y liberar asientos</IonButton>
-              {pendientes.length === 0 && <p className="pn-sub" style={{ marginTop: 6 }}>Esta solicitud no tiene compras pendientes de anular.</p>}
+              <IonButton expand="block" color="success" className="pn-campo" disabled={guardando || pendientes.length === 0 || (pendientes.length > 1 && elegidas.length === 0)} onClick={() => setConfirmarAnular(true)}>Devolución completada</IonButton>
+              {pendientes.length === 0 && <p className="pn-sub" style={{ marginTop: 6 }}>Esta solicitud no tiene compras pendientes por completar.</p>}
             </>
           )}
         </div>
@@ -271,9 +271,9 @@ const DetalleSolicitud: React.FC<{ solicitud: Solicitud; codigoEvento: string; o
       <IonAlert isOpen={confirmarResolver} onDidDismiss={() => setConfirmarResolver(false)} header="¿Marcar como devuelta?"
         message={`${monto ? `Valor $${monto}. ` : ''}${avisar && s.email ? `Se le avisará a ${s.email}.` : 'No se le avisará por correo.'}`}
         buttons={[{ text: 'No', role: 'cancel' }, { text: 'Sí', handler: () => { resolver(); } }]} />
-      <IonAlert isOpen={confirmarAnular} onDidDismiss={() => setConfirmarAnular(false)} header="¿Anular la compra?"
-        message="Se liberan los asientos y las entradas viejas dejan de servir. No se puede deshacer."
-        buttons={[{ text: 'No', role: 'cancel' }, { text: 'Sí, anular', role: 'destructive', handler: () => { anular(); } }]} />
+      <IonAlert isOpen={confirmarAnular} onDidDismiss={() => setConfirmarAnular(false)} header="¿Devolución completada?"
+        message="La compra queda en estado Devuelto, se liberan los asientos y las entradas viejas dejan de servir. No se puede deshacer."
+        buttons={[{ text: 'No', role: 'cancel' }, { text: 'Sí, completar', role: 'destructive', handler: () => { anular(); } }]} />
     </PanelPagina>
   );
 };
