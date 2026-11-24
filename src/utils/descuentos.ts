@@ -45,6 +45,55 @@ export const obtenerDescuentosVendedor = async (
   }
 };
 
+/* Código de descuento (el mismo que se escribe en la página de usuarios): GET /api/v1/descuento_link/:codigo.
+   Puede ser un % (sobre precio base o final) o un monto fijo en dólares (por entrada o por compra). El backend lo vuelve
+   a validar al registrar la compra (vigencia, usos máximos y usos por cédula). */
+export interface CodigoDescuento {
+  codigo: string;
+  id: number;
+  nombre: string;
+  mensaje_motivo?: string | null;
+  tipo: 'porcentaje' | 'monto';
+  porcentaje: number;
+  monto: number;
+  montoPor: 'entrada' | 'compra';
+  aplica_sobre: 'base' | 'final';
+}
+
+export const validarCodigoDescuento = async (
+  codigo: string,
+  codigoEvento: string,
+  cedula?: string,
+): Promise<{ ok: true; descuento: CodigoDescuento } | { ok: false; motivo: string }> => {
+  const cod = codigo.trim();
+  if (!cod) return { ok: false, motivo: 'Escribe el código de descuento.' };
+  try {
+    const { data } = await axios.get(`${URL_BASE}/descuento_link/${encodeURIComponent(cod)}`, {
+      headers: API_HDR,
+      params: { codigoEvento, ...(cedula ? { cedula } : {}) },
+    });
+    const d = data?.data;
+    if (!data?.success || !d?.valido) return { ok: false, motivo: d?.motivo || 'Código de descuento no válido' };
+    const esMonto = d.tipo_descuento === 'monto';
+    return {
+      ok: true,
+      descuento: {
+        codigo: cod,
+        id: Number(d.id),
+        nombre: String(d.nombre || 'Código de descuento'),
+        mensaje_motivo: d.mensaje_motivo || null,
+        tipo: esMonto ? 'monto' : 'porcentaje',
+        porcentaje: esMonto ? 0 : Number(d.porcentaje) || 0,
+        monto: esMonto ? Number(d.monto_descuento) || 0 : 0,
+        montoPor: d.monto_por === 'compra' ? 'compra' : 'entrada',
+        aplica_sobre: !esMonto && d.aplica_sobre === 'base' ? 'base' : 'final',
+      },
+    };
+  } catch {
+    return { ok: false, motivo: 'No se pudo validar el código. Revisa tu conexión e intenta de nuevo.' };
+  }
+};
+
 /* Total con el % de descuento aplicado sobre el TOTAL FINAL (el otro modo,
    "sobre precio base", no es un simple % sobre el total -- reduce el precio
    unitario antes de recalcular IVA/comisión bancaria, ver su uso en

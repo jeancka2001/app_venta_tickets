@@ -72,6 +72,20 @@
 .pago-desc-opt:last-child { border-bottom: none; }
 .pago-desc-opt input { flex-shrink: 0; }
 .pago-desc-opt strong { color: #2d358c; }
+.pago-desc-opt em { font-style: normal; color: #6b7a90; font-size: 0.78rem; }
+
+/* Código de descuento (el mismo de la página de usuarios) */
+.pago-codigo { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; margin-top: 6px; border-top: 1px solid #f0f2f8; }
+.pago-codigo-lbl { font-size: 0.78rem; font-weight: 700; color: #6b7a90; text-transform: uppercase; letter-spacing: .04em; }
+.pago-codigo-fila { display: flex; gap: 8px; }
+.pago-codigo-fila .comprobante-input { flex: 1; min-width: 0; text-transform: uppercase; }
+.pago-codigo-aplicar { flex: 0 0 auto; border: none; border-radius: 10px; padding: 0 16px; font-size: 0.85rem; font-weight: 700; color: #fff; background: #2d358c; }
+.pago-codigo-aplicar:disabled { opacity: .45; }
+.pago-codigo-ok { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; border-radius: 10px; background: #e8f7ee; color: #14532d; font-size: 0.85rem; }
+.pago-codigo-ok strong { color: #14532d; }
+.pago-codigo-quitar { flex: 0 0 auto; border: none; background: transparent; color: #b00020; font-weight: 700; font-size: 0.82rem; padding: 4px 6px; }
+.pago-codigo-error { font-size: 0.8rem; color: #b00020; }
+.pago-codigo-hint { font-size: 0.78rem; color: #6b7a90; line-height: 1.35; }
 
 .pago-total-row {
   font-size: 1rem;
@@ -457,6 +471,12 @@
   .pago-card-title    { color: #6b7a90; }
   .pago-desc-opt      { color: #e8ecf5; border-bottom-color: #2a3050; }
   .pago-desc-opt strong { color: #7b8fdc; }
+  .pago-codigo { border-top-color: #2a3050; }
+  .pago-codigo-lbl, .pago-codigo-hint, .pago-desc-opt em { color: #9da5b4; }
+  .pago-codigo-ok { background: #17352a; color: #bff0d2; }
+  .pago-codigo-ok strong { color: #bff0d2; }
+  .pago-codigo-error { color: #ff8a9b; }
+  .pago-codigo-quitar { color: #ff8a9b; }
   .pago-evento-nombre { color: #e8ecf5; }
   .pago-fila          { border-bottom-color: #2a3050; }
   .pago-lbl           { color: #9da5b4; }

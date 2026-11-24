@@ -20,7 +20,10 @@ import {
   type CategoriaMetodo,
 } from '../utils/metodosPago';
 import { obtenerStaffData, logoutStaff } from '../utils/staffAuth';
-import { obtenerDescuentosVendedor, aplicarDescuento, type DescuentoVendedor } from '../utils/descuentos';
+import {
+  obtenerDescuentosVendedor, aplicarDescuento, validarCodigoDescuento,
+  type DescuentoVendedor, type CodigoDescuento,
+} from '../utils/descuentos';
 import { puedeRegistrarCortesia } from '../utils/cortesias';
 import type { Cliente } from './VentaEvento';
 import './Pago.css';
@@ -168,6 +171,12 @@ const Pago: React.FC = () => {
      compra -- aquí solo se muestra el neto y se manda `descuento:{id}`. */
   const [descuentos, setDescuentos] = useState<DescuentoVendedor[]>([]);
   const [descuentoSel, setDescuentoSel] = useState<number | null>(null);
+
+  /* Código de descuento (el de la página de usuarios). Va en lugar del descuento de la lista: uno solo por venta. */
+  const [codigoInput, setCodigoInput] = useState('');
+  const [codigoAplicado, setCodigoAplicado] = useState<CodigoDescuento | null>(null);
+  const [validandoCodigo, setValidandoCodigo] = useState(false);
+  const [errorCodigo, setErrorCodigo] = useState('');
 
   /* Boleto físico (impreso de antemano) para métodos locales: 'digital' =
      flujo de siempre. 'fisico' = se escanea/teclea el código de barras de
@@ -325,13 +334,15 @@ const Pago: React.FC = () => {
   const quedaPagadoAlInstante = ['Efectivo-Local', 'Tarjeta-Local', 'Efectivo-QR', 'Cortesia'].includes(met.key);
 
   /* Descuento 50% (discapacidad / tercera edad): usa el precio_discapacidad de la localidad, igual que el panel web.
-     Naipes: solo marca la entrada (tarifa "Promocion" en la Factura Final); no cambia el precio.
+     Solo rebaja si ese precio es menor al normal (si la localidad lo tiene igual, no hay nada que restar y se avisa).
+     Naipes: oculto por ahora (la casilla se quitó de esta pantalla).
      Cortesia: todo $0.00 y no admite descuentos ni tarifas especiales. */
   const [descDiscapacidad, setDescDiscapacidad] = useState(false);
-  const [naipes, setNaipes] = useState(false);
   const precioDiscapNum = Number(st.precioDiscapacidad || 0);
-  const aplicaDiscap = descDiscapacidad && precioDiscapNum > 0 && !esCortesia;
-  const precioNum   = esCortesia ? 0 : (aplicaDiscap ? precioDiscapNum : Number(st.precio || 0));
+  const precioNormalNum = Number(st.precio || 0);
+  const discapTieneRebaja = precioDiscapNum > 0 && precioDiscapNum < precioNormalNum;
+  const aplicaDiscap = descDiscapacidad && discapTieneRebaja && !esCortesia;
+  const precioNum   = esCortesia ? 0 : (aplicaDiscap ? precioDiscapNum : precioNormalNum);
   const cantidadNum = Number(st.cantidad      || 1);
   const factorNum   = Math.max(1, Math.min(10, Math.floor(Number(st.factorBoletos) || 1)));
   // Precios a cobrar (paquetes): con x2, 2 entradas = 1 precio. La comision por boleto sigue siendo por entrada
@@ -349,8 +360,21 @@ const Pago: React.FC = () => {
      total con descuento en pantalla, pero el backend (que en ese modo
      confía en que el frontend ya redujo el precio) no descontaba nada: el
      cliente terminaba pagando el total bruto completo. */
-  const descuentoActivo = esCortesia ? null : (descuentos.find(d => d.id === descuentoSel) ?? null);
-  const aplicaSobreBase = descuentoActivo?.aplica_sobre === 'base';
+  const descuentoLista = esCortesia ? null : (descuentos.find(d => d.id === descuentoSel) ?? null);
+  const codigoActivo = esCortesia ? null : codigoAplicado;
+  /* Descuento en uso: el código (si hay) o el de la lista. Un monto fijo (solo por código) se resta del total final. */
+  const descuentoActivo: { nombre: string; porcentaje: number; esMonto: boolean; monto: number; montoPor: 'entrada' | 'compra'; aplica_sobre: 'base' | 'final' } | null =
+    codigoActivo
+      ? { nombre: codigoActivo.nombre, porcentaje: codigoActivo.porcentaje, esMonto: codigoActivo.tipo === 'monto', monto: codigoActivo.monto, montoPor: codigoActivo.montoPor, aplica_sobre: codigoActivo.aplica_sobre }
+      : descuentoLista
+        ? { nombre: descuentoLista.nombre, porcentaje: descuentoLista.porcentaje, esMonto: false, monto: 0, montoPor: 'entrada', aplica_sobre: descuentoLista.aplica_sobre }
+        : null;
+  const textoDescuento = descuentoActivo
+    ? (descuentoActivo.esMonto
+        ? `−$${descuentoActivo.monto.toFixed(2)} ${descuentoActivo.montoPor === 'compra' ? 'por compra' : 'por entrada'}`
+        : `−${descuentoActivo.porcentaje}%`)
+    : '';
+  const aplicaSobreBase = !!descuentoActivo && !descuentoActivo.esMonto && descuentoActivo.aplica_sobre === 'base';
   const precioParaCalculo = (aplicaSobreBase && descuentoActivo)
     ? precioNum * (1 - descuentoActivo.porcentaje / 100)
     : precioNum;
@@ -366,12 +390,39 @@ const Pago: React.FC = () => {
      mostrar y para el chequeo del OCR. `montoDescuento` siempre compara
      contra el total SIN descuento, para mostrar el ahorro real en
      cualquiera de los dos modos. */
+  // Monto fijo: por entrada cobrada (o una vez por compra), sin bajar de $0 -- igual que calcularDescuentoMonto del backend
+  const montoFijo = descuentoActivo?.esMonto
+    ? Math.max(0, Math.min(
+        Math.round((descuentoActivo.monto * (descuentoActivo.montoPor === 'compra' ? 1 : cantidadCobro) + Number.EPSILON) * 100) / 100,
+        Math.round((total + Number.EPSILON) * 100) / 100))
+    : 0;
   const totalACobrar = aplicaSobreBase
     ? total
-    : (descuentoActivo ? aplicarDescuento(total, descuentoActivo.porcentaje).neto : total);
+    : descuentoActivo?.esMonto
+      ? Math.round((total - montoFijo + Number.EPSILON) * 100) / 100
+      : (descuentoActivo ? aplicarDescuento(total, descuentoActivo.porcentaje).neto : total);
   const montoDescuento = (aplicaSobreBase && descuentoActivo)
     ? Math.round(((precioNum - precioParaCalculo) * cantidadCobro + Number.EPSILON) * 100) / 100
-    : (descuentoActivo ? aplicarDescuento(total, descuentoActivo.porcentaje).monto : 0);
+    : descuentoActivo?.esMonto
+      ? montoFijo
+      : (descuentoActivo ? aplicarDescuento(total, descuentoActivo.porcentaje).monto : 0);
+  // Ahorro de la tarifa Dis./Ter. edad (ya viene dentro del subtotal): precio normal menos el precio rebajado, por entrada cobrada
+  const ahorroDiscap = aplicaDiscap
+    ? Math.round(((precioNormalNum - precioDiscapNum) * cantidadCobro + Number.EPSILON) * 100) / 100
+    : 0;
+
+  const aplicarCodigo = async () => {
+    if (validandoCodigo) return;
+    setValidandoCodigo(true);
+    setErrorCodigo('');
+    const r = await validarCodigoDescuento(codigoInput, st.codigoEvento || '', cliente?.cedula);
+    setValidandoCodigo(false);
+    if (!r.ok) { setErrorCodigo(r.motivo); return; }
+    setCodigoAplicado(r.descuento);
+    setDescuentoSel(null); // uno solo por venta: el código reemplaza al de la lista
+    setCodigoInput('');
+  };
+  const quitarCodigo = () => { setCodigoAplicado(null); setErrorCodigo(''); };
 
   /* Verificación local del comprobante leído por OCR contra lo que
      debería depositarse: el backend solo avisa de posible adulteración
@@ -444,7 +495,10 @@ const Pago: React.FC = () => {
     setTarjetaReferencia('');
     setDescuentoSel(null);
     setDescDiscapacidad(false);
-    setNaipes(false);
+    setCodigoInput('');
+    setCodigoAplicado(null);
+    setErrorCodigo('');
+    setValidandoCodigo(false);
     setTipoBoleto('fisico');
     setCodigoFisicoInput('');
     setCodigosFisicos([]);
@@ -762,7 +816,6 @@ const Pago: React.FC = () => {
           iva:                 ivaImporte.toFixed(2),
           discapacida:         aplicaDiscap,
           menor:               false,
-          naipes:              naipes && !esCortesia,
           id_sillas:           st.idSillas        || [],
         }],
         valores: {
@@ -779,7 +832,10 @@ const Pago: React.FC = () => {
         },
         // Descuento marcado por el vendedor (uno por venta). El backend
         // revalida (autorización + evento) y recalcula total_pago.
-        ...(descuentoSel && !esCortesia ? { descuento: { id: descuentoSel } } : {}),
+        // Con código de descuento va { codigo } (el backend valida vigencia, usos y cédula); si no, el de la lista { id }.
+        ...(!esCortesia && codigoAplicado
+          ? { descuento: { codigo: codigoAplicado.codigo } }
+          : (descuentoSel && !esCortesia ? { descuento: { id: descuentoSel } } : {})),
         // Cortesia ($0.00): el backend deja todo en 0, valida el permiso y no admite descuentos
         ...(esCortesia ? { cortesia: true } : {}),
         // Tarjeta física (POS en mano): número de lote y referencia del
@@ -1303,19 +1359,55 @@ const Pago: React.FC = () => {
               </div>
             </div>
 
-            {!esCortesia && (precioDiscapNum > 0 || metodosDisponibles !== null) && (
+            {!esCortesia && (
               <div className="pago-card">
                 <h3 className="pago-card-title">Tarifa</h3>
-                {precioDiscapNum > 0 && (
+                {discapTieneRebaja ? (
                   <label className="pago-desc-opt">
                     <input type="checkbox" checked={descDiscapacidad} onChange={(e) => setDescDiscapacidad(e.target.checked)} />
-                    <span>Descuento 50% · Dis./Ter. edad <strong>${precioDiscapNum.toFixed(2)}</strong> c/u</span>
+                    <span>Descuento 50% · Dis./Ter. edad <strong>${precioDiscapNum.toFixed(2)}</strong> c/u <em>(normal ${precioNormalNum.toFixed(2)})</em></span>
                   </label>
+                ) : (
+                  <span className="pago-codigo-hint">
+                    {precioDiscapNum > 0
+                      ? `Esta localidad no tiene rebaja Dis./Ter. edad: su precio ($${precioDiscapNum.toFixed(2)}) es igual al normal. Se configura en Admin > Evento > Localidades.`
+                      : 'Esta localidad no tiene precio Dis./Ter. edad configurado.'}
+                  </span>
                 )}
-                <label className="pago-desc-opt">
-                  <input type="checkbox" checked={naipes} onChange={(e) => setNaipes(e.target.checked)} />
-                  <span>Naipes</span>
-                </label>
+
+                <div className="pago-codigo">
+                  <span className="pago-codigo-lbl">Código de descuento</span>
+                  {codigoAplicado ? (
+                    <div className="pago-codigo-ok">
+                      <div>
+                        <strong>{codigoAplicado.codigo}</strong> · {codigoAplicado.nombre} <strong>{textoDescuento}</strong>
+                        {codigoAplicado.mensaje_motivo ? <div className="pago-codigo-hint">{codigoAplicado.mensaje_motivo}</div> : null}
+                      </div>
+                      <button type="button" className="pago-codigo-quitar" onClick={quitarCodigo}>Quitar</button>
+                    </div>
+                  ) : (
+                    <div className="pago-codigo-fila">
+                      <input
+                        type="text"
+                        className="comprobante-input"
+                        value={codigoInput}
+                        autoCapitalize="characters"
+                        autoCorrect="off"
+                        spellCheck={false}
+                        placeholder="Ej: TICKETS1234"
+                        onChange={(e) => { setCodigoInput(e.target.value.replace(/\s/g, '')); setErrorCodigo(''); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') aplicarCodigo(); }}
+                      />
+                      <button type="button" className="pago-codigo-aplicar" disabled={validandoCodigo || !codigoInput.trim()} onClick={aplicarCodigo}>
+                        {validandoCodigo ? 'Validando…' : 'Aplicar'}
+                      </button>
+                    </div>
+                  )}
+                  {errorCodigo && <span className="pago-codigo-error">{errorCodigo}</span>}
+                  {codigoAplicado && descuentos.length > 0 && (
+                    <span className="pago-codigo-hint">Con un código no se usa el descuento de la lista: es uno por venta.</span>
+                  )}
+                </div>
               </div>
             )}
 
@@ -1501,8 +1593,8 @@ const Pago: React.FC = () => {
                   <input
                     type="radio"
                     name="descuento"
-                    checked={descuentoSel === null}
-                    onChange={() => setDescuentoSel(null)}
+                    checked={descuentoSel === null && !codigoAplicado}
+                    onChange={() => { setDescuentoSel(null); setCodigoAplicado(null); }}
                   />
                   <span>Sin descuento</span>
                 </label>
@@ -1512,7 +1604,7 @@ const Pago: React.FC = () => {
                       type="radio"
                       name="descuento"
                       checked={descuentoSel === d.id}
-                      onChange={() => setDescuentoSel(d.id)}
+                      onChange={() => { setDescuentoSel(d.id); setCodigoAplicado(null); }}
                     />
                     <span>{d.nombre} <strong>−{d.porcentaje}%</strong></span>
                   </label>
@@ -1544,9 +1636,15 @@ const Pago: React.FC = () => {
                   <span className="pago-val">${comisionBancaria.toFixed(2)}</span>
                 </div>
               )}
+              {aplicaDiscap && (
+                <div className="pago-fila">
+                  <span className="pago-lbl">Tarifa Dis./Ter. edad (precio normal ${precioNormalNum.toFixed(2)} → ${precioDiscapNum.toFixed(2)})</span>
+                  <span className="pago-val">Incluido arriba (−${ahorroDiscap.toFixed(2)})</span>
+                </div>
+              )}
               {descuentoActivo && (
                 <div className="pago-fila">
-                  <span className="pago-lbl">Descuento ({descuentoActivo.nombre} −{descuentoActivo.porcentaje}%)</span>
+                  <span className="pago-lbl">Descuento ({descuentoActivo.nombre} {textoDescuento})</span>
                   {/* En modo "base" el Subtotal/IVA/Comisión de arriba YA salen
                       calculados sobre el precio reducido -- mostrar acá también
                       el monto en $ haría que la suma visible de las filas no
@@ -1669,7 +1767,7 @@ const Pago: React.FC = () => {
                 )}
                 {descuentoActivo && (
                   <div className="pago-fila">
-                    <span className="pago-lbl">Descuento ({descuentoActivo.nombre} −{descuentoActivo.porcentaje}%)</span>
+                    <span className="pago-lbl">Descuento ({descuentoActivo.nombre} {textoDescuento})</span>
                     {/* Mismo criterio que arriba: en modo "base" ya está
                         reflejado en Subtotal/IVA/Comisión, no se resta de nuevo. */}
                     <span className="pago-val">
