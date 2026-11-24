@@ -18,6 +18,10 @@ import marcaTickets from '../images/MARCA_TICKETS.png';
 import { BotonMenu } from '../components/MenuPaginas';
 import './Vender.css';
 
+const ESTADOS_LISTA = ['ACTIVO', 'PROCESO', 'PROXIMO', 'CANCELADO', 'FINALIZADO'];
+const ESTADOS_VENDIBLES = ['ACTIVO', 'PROCESO'];
+const TEXTO_ESTADO: Record<string, string> = { ACTIVO: 'Activo', PROCESO: 'En proceso', PROXIMO: 'Próximo', CANCELADO: 'Cancelado', FINALIZADO: 'Finalizado' };
+
 interface Evento {
   id: number;
   nombreConcierto: string;
@@ -74,33 +78,25 @@ const Vender: React.FC = () => {
       // Cabeceras con el JWT del vendedor logueado (no el token de
       // servicio): el backend filtra listareventos por lo que ese usuario
       // tiene asignado en usuario_evento, salvo perfil admin/super_admin.
-      // Eventos ACTIVOS (obligatorio) + eventos EN PROCESO asignados al vendedor: se puede vender antes de que se publiquen.
-      // Si la lista de "en proceso" falla no se bloquea la de activos.
-      const pedir = (estado: string) =>
-        axios.get(`https://api.t-ickets.com/ms_login/listareventos/${estado}/`, { headers: staffAuthHeaders() });
-      const [activos, proceso] = await Promise.all([
-        pedir('ACTIVO'),
-        pedir('PROCESO').catch((e) => {
-          if (axios.isAxiosError(e) && e.response?.status === 401) throw e;
-          return null;
-        }),
-      ]);
-      const data = {
-        success: activos.data.success,
-        data: [
-          ...((activos.data.data as Evento[]) || []),
-          ...(proceso?.data?.success ? ((proceso.data.data as Evento[]) || []) : []),
-        ],
-      };
-      if (data.success) {
-        const hoy = new Date();
-        const vistos = new Set<string>();
-        const soloFuturos = (data.data as Evento[])
-          .filter((ev) => new Date(ev.fechaConcierto + 'T23:59:59') > hoy)
-          .filter((ev) => (vistos.has(ev.codigoEvento) ? false : (vistos.add(ev.codigoEvento), true)))
-          .sort((a, b) => a.fechaConcierto.localeCompare(b.fechaConcierto));
-        setEventos(soloFuturos);
-      } else setError('No se pudieron cargar los eventos');
+      // Todos los eventos asignados al vendedor, en cualquier estado (el backend ya filtra por usuario_evento). Solo los ACTIVO y
+      // EN PROCESO se pueden vender; los demás se ven con su estado. Si falla un estado no se bloquea el resto; si vence la sesión (401) se sale.
+      let sesionVencida = false;
+      const resultados = await Promise.all(ESTADOS_LISTA.map((estado) =>
+        axios.get(`https://api.t-ickets.com/ms_login/listareventos/${estado}/`, { headers: staffAuthHeaders() })
+          .then((r) => (r.data?.success && Array.isArray(r.data?.data) ? (r.data.data as Evento[]) : null))
+          .catch((e) => { if (axios.isAxiosError(e) && e.response?.status === 401) sesionVencida = true; return null; })));
+      if (sesionVencida) throw Object.assign(new Error('sesion'), { isAxiosError: true, response: { status: 401 } });
+      if (resultados.every((r) => r === null)) { setError('No se pudieron cargar los eventos'); return; }
+      const mapa = new Map<string, Evento>();
+      resultados.forEach((lista) => (lista || []).forEach((ev) => mapa.set(ev.codigoEvento, ev)));
+      const hoy = new Date();
+      const vendible = (ev: Evento) => ESTADOS_VENDIBLES.includes(String(ev.estado || '').toUpperCase());
+      const todos = Array.from(mapa.values())
+        // Los vendibles ya pasados no se ofrecen (igual que antes); el resto se muestra siempre
+        .filter((ev) => !vendible(ev) || new Date(ev.fechaConcierto + 'T23:59:59') > hoy);
+      todos.sort((x, y) => (Number(vendible(y)) - Number(vendible(x)))
+        || (vendible(x) ? x.fechaConcierto.localeCompare(y.fechaConcierto) : y.fechaConcierto.localeCompare(x.fechaConcierto)));
+      setEventos(todos);
     } catch (err) {
       // El backend responde 401 con sesion_expirada:true cuando el JWT del
       // vendedor está vencido (dura 1h) -- antes esto también hacía que la
@@ -207,7 +203,7 @@ const Vender: React.FC = () => {
                   </div>
                   <div className="evento-body">
                     <h2 className="evento-nombre">{ev.nombreConcierto}</h2>
-                    {String(ev.estado || '').toUpperCase() === 'PROCESO' && <span className="evento-proceso">En proceso</span>}
+                    {String(ev.estado || '').toUpperCase() !== 'ACTIVO' && <span className={`evento-proceso evento-estado-${String(ev.estado || '').toLowerCase()}`}>{TEXTO_ESTADO[String(ev.estado || '').toUpperCase()] || ev.estado}</span>}
                     <div className="evento-detalle">
                       <IonIcon icon={calendarNumberOutline} />
                       <span>{formatFecha(ev.fechaConcierto)} · {ev.horaConcierto}</span>
@@ -217,11 +213,14 @@ const Vender: React.FC = () => {
                       <span>{ev.lugarConcierto}, {ev.cuidadConcert}</span>
                     </div>
 
-                    <button className="btn-ver-precios" onClick={() => alternarPrecios(ev)}>
+                    {!ESTADOS_VENDIBLES.includes(String(ev.estado || '').toUpperCase()) && (
+                      <p className="evento-no-vendible">Este evento ya no está a la venta; lo ves porque lo tienes asignado.</p>
+                    )}
+                    {ESTADOS_VENDIBLES.includes(String(ev.estado || '').toUpperCase()) && <button className="btn-ver-precios" onClick={() => alternarPrecios(ev)}>
                       <IonIcon icon={pricetagOutline} />
                       <span>Ver precios</span>
                       <IonIcon icon={abierto ? chevronUpOutline : chevronDownOutline} className="chevron" />
-                    </button>
+                    </button>}
 
                     {abierto && (
                       <div className="precios-panel">

@@ -200,3 +200,7 @@
   display: inline-block; margin: 2px 0 6px; padding: 2px 10px; border-radius: 999px;
   background: #fff0d9; color: #9a5a00; font-size: 11px; font-weight: 800; letter-spacing: .03em;
 }
+.evento-estado-finalizado { background: #e9ecf2; color: #4a5370; }
+.evento-estado-cancelado { background: #fde8e8; color: #7f1d1d; }
+.evento-estado-proximo { background: #e7ebff; color: #2e3192; }
+.evento-no-vendible { font-size: 12.5px; color: #6b7599; margin: 8px 0 0; }
