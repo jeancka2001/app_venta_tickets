@@ -29,6 +29,7 @@ interface Evento {
   mapaConcierto: string;
   codigoEvento: string;
   iva?: string;
+  estado?: string;
 }
 
 interface Localidad {
@@ -73,15 +74,31 @@ const Vender: React.FC = () => {
       // Cabeceras con el JWT del vendedor logueado (no el token de
       // servicio): el backend filtra listareventos por lo que ese usuario
       // tiene asignado en usuario_evento, salvo perfil admin/super_admin.
-      const { data } = await axios.get(
-        'https://api.t-ickets.com/ms_login/listareventos/ACTIVO/',
-        { headers: staffAuthHeaders() }
-      );
+      // Eventos ACTIVOS (obligatorio) + eventos EN PROCESO asignados al vendedor: se puede vender antes de que se publiquen.
+      // Si la lista de "en proceso" falla no se bloquea la de activos.
+      const pedir = (estado: string) =>
+        axios.get(`https://api.t-ickets.com/ms_login/listareventos/${estado}/`, { headers: staffAuthHeaders() });
+      const [activos, proceso] = await Promise.all([
+        pedir('ACTIVO'),
+        pedir('PROCESO').catch((e) => {
+          if (axios.isAxiosError(e) && e.response?.status === 401) throw e;
+          return null;
+        }),
+      ]);
+      const data = {
+        success: activos.data.success,
+        data: [
+          ...((activos.data.data as Evento[]) || []),
+          ...(proceso?.data?.success ? ((proceso.data.data as Evento[]) || []) : []),
+        ],
+      };
       if (data.success) {
         const hoy = new Date();
-        const soloFuturos = (data.data as Evento[]).filter(
-          (ev) => new Date(ev.fechaConcierto + 'T23:59:59') > hoy
-        );
+        const vistos = new Set<string>();
+        const soloFuturos = (data.data as Evento[])
+          .filter((ev) => new Date(ev.fechaConcierto + 'T23:59:59') > hoy)
+          .filter((ev) => (vistos.has(ev.codigoEvento) ? false : (vistos.add(ev.codigoEvento), true)))
+          .sort((a, b) => a.fechaConcierto.localeCompare(b.fechaConcierto));
         setEventos(soloFuturos);
       } else setError('No se pudieron cargar los eventos');
     } catch (err) {
@@ -190,6 +207,7 @@ const Vender: React.FC = () => {
                   </div>
                   <div className="evento-body">
                     <h2 className="evento-nombre">{ev.nombreConcierto}</h2>
+                    {String(ev.estado || '').toUpperCase() === 'PROCESO' && <span className="evento-proceso">En proceso</span>}
                     <div className="evento-detalle">
                       <IonIcon icon={calendarNumberOutline} />
                       <span>{formatFecha(ev.fechaConcierto)} · {ev.horaConcierto}</span>
