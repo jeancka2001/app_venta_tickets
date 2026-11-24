@@ -24,6 +24,7 @@ import LockScreen from './components/LockScreen';
 import ConfigBloqueo from './components/ConfigBloqueo';
 import MenuPaginas, { ID_CONTENIDO } from './components/MenuPaginas';
 import Soporte from './pages/Soporte';
+import Chats from './pages/Chats';
 import Devoluciones from './pages/Devoluciones';
 import CorreosMasivos from './pages/CorreosMasivos';
 import Pixeles from './pages/Pixeles';
@@ -96,6 +97,7 @@ const App: React.FC = () => (
         <Route path="/escanear-boleto" element={<RutaProtegida><EscanearBoleto /></RutaProtegida>} />
         <Route path="/canjear-entradas" element={<RutaProtegida><CanjearEntradas /></RutaProtegida>} />
         <Route path="/soporte" element={<RutaPagina clave="soporte"><Soporte /></RutaPagina>} />
+        <Route path="/chats" element={<RutaPagina clave="chats"><Chats /></RutaPagina>} />
         <Route path="/devoluciones" element={<RutaPagina clave="devoluciones"><Devoluciones /></RutaPagina>} />
         <Route path="/correos-masivos" element={<RutaPagina clave="correos"><CorreosMasivos /></RutaPagina>} />
         <Route path="/pixeles" element={<RutaPagina clave="meta_pixel"><Pixeles /></RutaPagina>} />

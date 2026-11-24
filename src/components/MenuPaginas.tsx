@@ -5,6 +5,7 @@ import {
 import {
   menuOutline, pricetagOutline, statsChartOutline, shieldCheckmarkOutline, peopleOutline, cashOutline, cardOutline, returnDownBackOutline,
   helpBuoyOutline, mailOutline, analyticsOutline, keyOutline, searchOutline, timeOutline, personCircleOutline,
+  chatbubblesOutline,
 } from 'ionicons/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { obtenerStaffData } from '../utils/staffAuth';
@@ -17,7 +18,7 @@ export const ID_CONTENIDO = 'contenido-app';
 
 const ICONOS: Record<string, string> = {
   pricetag: pricetagOutline, stats: statsChartOutline, shield: shieldCheckmarkOutline, people: peopleOutline, cash: cashOutline, card: cardOutline,
-  return: returnDownBackOutline, help: helpBuoyOutline, mail: mailOutline, analytics: analyticsOutline, key: keyOutline,
+  return: returnDownBackOutline, help: helpBuoyOutline, chat: chatbubblesOutline, mail: mailOutline, analytics: analyticsOutline, key: keyOutline,
 };
 
 /* Estas tres siempre están (son pestañas de abajo) */

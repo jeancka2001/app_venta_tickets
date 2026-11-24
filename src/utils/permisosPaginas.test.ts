@@ -44,4 +44,10 @@ describe('permisos de páginas de la app', () => {
     expect(new Set(PAGINAS_APP.map((p) => p.clave)).size).toBe(PAGINAS_APP.length);
     expect(new Set(PAGINAS_APP.map((p) => p.ruta)).size).toBe(PAGINAS_APP.length);
   });
+  it('Chats es una página propia: admin la ve por defecto y con configuración solo si se marca', () => {
+    expect(puedeVerClave('chats', 'admin', null)).toBe(true);
+    expect(puedeVerClave('chats', 'vendedores', null)).toBe(false);
+    expect(puedeVerClave('chats', 'vendedores', ['chats'])).toBe(true);
+    expect(puedeVerClave('chats', 'admin', ['soporte'])).toBe(false);
+  });
 });

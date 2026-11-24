@@ -16,6 +16,7 @@ const PAGINAS: { clave: string; nombre: string; seccion: string }[] = [
   { clave: 'sorteo', nombre: 'Rifa / Sorteo', seccion: 'General' },
   { clave: 'devoluciones', nombre: 'Devoluciones', seccion: 'General' },
   { clave: 'soporte', nombre: 'Soporte (tickets de los clientes)', seccion: 'General' },
+  { clave: 'chats', nombre: 'Chats (conversación en vivo con los clientes)', seccion: 'General' },
   { clave: 'correos', nombre: 'Correos masivos', seccion: 'General' },
   { clave: 'qr_viewer', nombre: 'QR Viewer', seccion: 'General' },
   { clave: 'preregistros', nombre: 'Preregistros', seccion: 'General' },
@@ -44,7 +45,7 @@ const PAGINAS: { clave: string; nombre: string; seccion: string }[] = [
 const SECCIONES = [...new Set(PAGINAS.map((p) => p.seccion))];
 const CLAVES_CONOCIDAS = new Set(PAGINAS.map((p) => p.clave));
 // Las páginas que la APP tiene (el resto solo se ve en la web)
-const EN_APP = new Set(['vender', 'mi_reporte', 'eventos', 'reporte_usuarios', 'comisiones', 'metodos_pago', 'devoluciones', 'soporte', 'correos', 'meta_pixel', 'permisos']);
+const EN_APP = new Set(['vender', 'mi_reporte', 'eventos', 'reporte_usuarios', 'comisiones', 'metodos_pago', 'devoluciones', 'soporte', 'chats', 'correos', 'meta_pixel', 'permisos']);
 
 interface Usuario { id: number; name?: string; username?: string; perfil?: string }
 const nombreUsuario = (u: Usuario) => u.name || u.username || `#${u.id}`;

@@ -34,6 +34,7 @@ export const PAGINAS_APP: PaginaApp[] = [
   { clave: 'metodos_pago', nombre: 'Métodos de pago', ruta: '/admin/metodos-pago', icono: 'card', seccion: 'Administración', roles: ADMINS },
   { clave: 'devoluciones', nombre: 'Devoluciones', ruta: '/devoluciones', icono: 'return', seccion: 'Administración', roles: ['admin'] },
   { clave: 'soporte', nombre: 'Soporte', ruta: '/soporte', icono: 'help', seccion: 'Administración', roles: ADMINS },
+  { clave: 'chats', nombre: 'Chats', ruta: '/chats', icono: 'chat', seccion: 'Administración', roles: ADMINS },
   { clave: 'correos', nombre: 'Correos masivos', ruta: '/correos-masivos', icono: 'mail', seccion: 'Administración', roles: ['admin'] },
   { clave: 'meta_pixel', nombre: 'Píxeles de publicidad', ruta: '/pixeles', icono: 'analytics', seccion: 'Administración', roles: ['admin'] },
   { clave: 'permisos', nombre: 'Permisos de páginas', ruta: '/permisos-paginas', icono: 'key', seccion: 'Administración', roles: ['admin'] },
