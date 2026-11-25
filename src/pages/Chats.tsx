@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { IonButton, IonIcon, IonTextarea, IonFooter, IonToolbar, IonRefresher, IonRefresherContent } from '@ionic/react';
-import { arrowBackOutline, sendOutline } from 'ionicons/icons';
+import { IonButton, IonIcon, IonTextarea, IonFooter, IonToolbar, IonRefresher, IonRefresherContent, IonModal, IonHeader, IonTitle, IonButtons, IonContent, IonInput, IonSpinner } from '@ionic/react';
+import { useNavigate } from 'react-router-dom';
+import { arrowBackOutline, sendOutline, addOutline, personOutline, closeOutline } from 'ionicons/icons';
 import PanelPagina, { PaginaFija } from '../components/PanelPagina';
-import { chatsLista, chatsMensajes, chatsResponder } from '../utils/panelesAdmin';
+import { chatsLista, chatsMensajes, chatsResponder, chatsClientes, chatsIniciar } from '../utils/panelesAdmin';
 
 /* Admin > Chats: conversación en vivo con los clientes que escriben desde el chat de la página.
    Misma página que la web: lista con filtros, conversación y respuesta. Al responder, el chat queda asignado a quien contesta. */
@@ -34,13 +35,92 @@ interface Chat {
   id: number; codigo: string; nombre?: string; categoria_texto?: string; estado: string; operador?: string; esperando_equipo?: boolean;
   ultimo_texto?: string; ultimo_de?: string; ultimo_en?: string; mio?: boolean; telefono?: string;
 }
+interface ClienteBusqueda { id: number; cedula: string; nombre: string; email?: string; telefono?: string; chat_activo?: number | null }
 interface Mensaje { id: number; de: 'cliente' | 'equipo' | 'sistema'; autor?: string; texto: string; creado_en?: string }
+
+/* "Nuevo chat": escribirle a una persona que no ha abierto un chat. Si ya tiene uno activo, el mensaje va en ese. */
+const NuevoChat: React.FC<{ abierto: boolean; onCerrar: () => void; onCreado: (id: number) => void }> = ({ abierto, onCerrar, onCreado }) => {
+  const [q, setQ] = useState('');
+  const [resultados, setResultados] = useState<ClienteBusqueda[] | null>(null);
+  const [buscando, setBuscando] = useState(false);
+  const [elegido, setElegido] = useState<ClienteBusqueda | null>(null);
+  const [texto, setTexto] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => { if (abierto) { setQ(''); setResultados(null); setElegido(null); setTexto(''); setError(''); } }, [abierto]);
+  useEffect(() => {
+    if (!abierto || elegido) return;
+    const b = q.trim();
+    if (b.length < 3) { setResultados(null); return; }
+    let vigente = true;
+    const t = setTimeout(async () => {
+      setBuscando(true);
+      const r = await chatsClientes(b);
+      if (!vigente) return;
+      setBuscando(false);
+      if (r.success) { setResultados(r.clientes || []); setError(''); } else setError(r.message || 'No se pudo buscar');
+    }, 350);
+    return () => { vigente = false; clearTimeout(t); };
+  }, [q, abierto, elegido]);
+
+  const enviar = async () => {
+    if (!elegido || !texto.trim() || enviando) return;
+    setEnviando(true); setError('');
+    const r = await chatsIniciar(elegido.cedula, texto.trim());
+    setEnviando(false);
+    if (r.success) onCreado(r.id); else setError(r.message || 'No se pudo enviar el mensaje');
+  };
+
+  return (
+    <IonModal isOpen={abierto} onDidDismiss={onCerrar}>
+      <IonHeader>
+        <IonToolbar>
+          <IonTitle>Nuevo chat</IonTitle>
+          <IonButtons slot="end"><IonButton onClick={onCerrar} aria-label="Cerrar"><IonIcon icon={closeOutline} slot="icon-only" /></IonButton></IonButtons>
+        </IonToolbar>
+      </IonHeader>
+      <IonContent className="ion-padding">
+        <p className="pn-lbl">Escríbele a una persona aunque no haya abierto un chat. Le llega a su cuenta en la página (y por correo si tiene uno).</p>
+        {!elegido ? (
+          <>
+            <IonInput fill="outline" placeholder="Nombre, cédula, correo o celular (mín. 3 letras)" value={q} onIonInput={(e) => setQ(String(e.detail.value || ''))} />
+            {buscando && <div className="pn-vacio"><IonSpinner name="crescent" /></div>}
+            {resultados && !buscando && resultados.length === 0 && <div className="pn-vacio">No se encontró a nadie con esos datos.</div>}
+            {(resultados || []).map((c) => (
+              <div key={c.id} className="pn-card pn-card-click" onClick={() => setElegido(c)}>
+                <div className="pn-lista-item">
+                  <div className="pn-lista-top"><span className="pn-lista-nombre">{c.nombre || 'Sin nombre'}</span>{c.chat_activo ? <span className="pn-badge pn-b-warning">Chat activo</span> : null}</div>
+                  <span className="pn-lista-pie">{[c.cedula, c.email, c.telefono].filter(Boolean).join(' · ')}</span>
+                </div>
+              </div>
+            ))}
+          </>
+        ) : (
+          <>
+            <div className="pn-card">
+              <div className="pn-lista-top"><span className="pn-lista-nombre">{elegido.nombre}</span><IonButton size="small" fill="clear" onClick={() => setElegido(null)}>Cambiar</IonButton></div>
+              <span className="pn-lista-pie">{[elegido.cedula, elegido.email, elegido.telefono].filter(Boolean).join(' · ')}</span>
+            </div>
+            {elegido.chat_activo ? <div className="pn-chat-sistema">Esta persona ya tiene un chat activo: tu mensaje irá en ese mismo chat.</div> : null}
+            <IonTextarea fill="outline" autoGrow rows={4} placeholder="Escribe el mensaje…" value={texto} maxlength={1000} onIonInput={(e) => setTexto(String(e.detail.value || ''))} />
+          </>
+        )}
+        {error && <div className="pn-error">{error}</div>}
+        <IonButton expand="block" disabled={!elegido || !texto.trim() || enviando} onClick={enviar} style={{ marginTop: 12 }}>
+          <IonIcon icon={sendOutline} slot="start" />{enviando ? 'Enviando…' : 'Enviar'}
+        </IonButton>
+      </IonContent>
+    </IonModal>
+  );
+};
 
 const ListaChats: React.FC = () => {
   const [filtro, setFiltro] = useState('sin_responder');
   const [datos, setDatos] = useState<{ chats: Chat[]; conteos: Record<string, number> } | null>(null);
   const [error, setError] = useState('');
   const [abierto, setAbierto] = useState<number | null>(null);
+  const [nuevoAbierto, setNuevoAbierto] = useState(false);
   const peticion = useRef(0);
 
   const cargar = useCallback(async () => {
@@ -56,6 +136,7 @@ const ListaChats: React.FC = () => {
 
   return (
     <PanelPagina titulo="Chats"
+      acciones={<IonButton onClick={() => setNuevoAbierto(true)} aria-label="Nuevo chat"><IonIcon icon={addOutline} slot="start" />Nuevo</IonButton>}
       encabezado={(
         <div className="pn-chips">
           {FILTROS.map((f) => (
@@ -64,6 +145,7 @@ const ListaChats: React.FC = () => {
         </div>
       )}>
       <IonRefresher slot="fixed" onIonRefresh={async (e) => { await cargar(); e.detail.complete(); }}><IonRefresherContent /></IonRefresher>
+      <NuevoChat abierto={nuevoAbierto} onCerrar={() => setNuevoAbierto(false)} onCreado={(id) => { setNuevoAbierto(false); setFiltro('activos'); setAbierto(id); }} />
       {error && <div className="pn-error">{error}</div>}
       {!datos && !error && <div className="pn-vacio">Cargando…</div>}
       {datos && datos.chats.length === 0 && <div className="pn-vacio">{filtro === 'sin_responder' ? 'No hay chats esperando respuesta. 🎉' : 'No hay chats con ese filtro.'}</div>}
@@ -85,7 +167,8 @@ const ListaChats: React.FC = () => {
 };
 
 const Conversacion: React.FC<{ id: number; onVolver: () => void }> = ({ id, onVolver }) => {
-  const [ticket, setTicket] = useState<(Chat & { cliente_en_linea?: boolean }) | null>(null);
+  const navigate = useNavigate();
+  const [ticket, setTicket] = useState<(Chat & { cliente_en_linea?: boolean; cedula?: string }) | null>(null);
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
@@ -133,6 +216,11 @@ const Conversacion: React.FC<{ id: number; onVolver: () => void }> = ({ id, onVo
             <div className="pn-fila"><span className="pn-lbl">Estado</span><span className={`pn-badge ${BADGE[ticket.estado] || 'pn-b-gris'}`}>{ticket.estado}</span></div>
             <div className="pn-fila"><span className="pn-lbl">Atiende</span><span className="pn-val">{ticket.operador || 'Sin asignar (al responder te lo asignas)'}</span></div>
             {ticket.cliente_en_linea && <div className="pn-fila"><span className="pn-lbl">Cliente</span><span className="pn-badge pn-b-ok">En línea</span></div>}
+            {ticket.cedula && (
+              <IonButton size="small" fill="outline" onClick={() => navigate('/dashboard/buscar', { state: { cedula: ticket.cedula } })}>
+                <IonIcon icon={personOutline} slot="start" />Perfil y compras
+              </IonButton>
+            )}
           </div>
         )}
         <div className="pn-chat">
@@ -145,7 +233,7 @@ const Conversacion: React.FC<{ id: number; onVolver: () => void }> = ({ id, onVo
                 <time>{hora(m.creado_en)}</time>
               </div>
             ))}
-          {terminado && <div className="pn-chat-sistema">Chat {ticket?.estado?.toLowerCase()}. Si respondes, se vuelve a abrir.</div>}
+          {terminado && <div className="pn-chat-sistema">Chat {ticket?.estado?.toLowerCase()}. Si le escribes, se vuelve a abrir.</div>}
           <div ref={fin} />
         </div>
       </PanelPagina>

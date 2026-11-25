@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonButtons,
   IonInput, IonButton, IonIcon, IonSpinner, IonText, IonBadge,
 } from '@ionic/react';
 import { searchOutline, chevronForwardOutline, ticketOutline, qrCodeOutline, checkmarkDoneOutline } from 'ionicons/icons';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { MS_LOGIN_AUTH_HEADERS } from '../utils/msLoginAuth';
 import marcaTickets from '../images/MARCA_TICKETS.png';
@@ -60,6 +60,7 @@ const formatFecha = (fecha: string) => {
 
 const BuscarCliente: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [cedula, setCedula]       = useState('');
   const [buscando, setBuscando]   = useState(false);
   const [buscado, setBuscado]     = useState(false);
@@ -69,8 +70,8 @@ const BuscarCliente: React.FC = () => {
   const [editando, setEditando] = useState(false);
   const [error, setError]         = useState('');
 
-  const buscar = async () => {
-    const ced = cedula.trim();
+  const buscar = async (cedulaDada?: string) => {
+    const ced = (cedulaDada ?? cedula).trim();
     if (!ced) { setError('Ingresa una cédula o RUC.'); return; }
     const rucMal = errorDeRuc(ced);
     if (rucMal) { setError(rucMal); return; }
@@ -93,6 +94,17 @@ const BuscarCliente: React.FC = () => {
       setBuscando(false);
     }
   };
+
+  /* Llegar desde Chats ("Perfil y compras"): busca de una vez la cédula de quien escribe */
+  const cedulaDeChat = (location.state as { cedula?: string } | null)?.cedula;
+  const yaBuscoDeChat = useRef('');
+  useEffect(() => {
+    if (cedulaDeChat && yaBuscoDeChat.current !== cedulaDeChat) {
+      yaBuscoDeChat.current = cedulaDeChat;
+      setCedula(cedulaDeChat);
+      buscar(cedulaDeChat);
+    }
+  }, [cedulaDeChat]); // eslint-disable-line
 
   const boletosGenerados = (reg: Registro) => (reg.ticket_usuarios ?? []).length;
   const boletosEsperados = (reg: Registro) =>
@@ -129,7 +141,7 @@ const BuscarCliente: React.FC = () => {
               onIonInput={(e) => setCedula(e.detail.value ?? '')}
               onKeyDown={(e) => { if (e.key === 'Enter') buscar(); }}
             />
-            <IonButton className="btn-buscar" onClick={buscar} disabled={buscando}>
+            <IonButton className="btn-buscar" onClick={() => buscar()} disabled={buscando}>
               {buscando ? <IonSpinner name="crescent" /> : <IonIcon icon={searchOutline} />}
             </IonButton>
           </div>

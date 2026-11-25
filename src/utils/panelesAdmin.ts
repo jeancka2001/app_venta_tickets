@@ -29,6 +29,8 @@ const pedir = async (fn: () => Promise<{ data: any }>): Promise<Resp> => {
 /* ---------------- Chats (conversación en vivo con los clientes de la página) ---------------- */
 export const chatsLista = (filtros: Record<string, string | number>) => pedir(() => axios.get(`${RAIZ}/soporte/chats/admin`, { headers: hdr(), params: filtros }));
 export const chatsMensajes = (id: number, despues = 0) => pedir(() => axios.get(`${RAIZ}/soporte/chats/admin/mensajes`, { headers: hdr(), params: { id, ...(despues ? { despues } : {}) } }));
+export const chatsClientes = (q: string) => pedir(() => axios.get(`${RAIZ}/soporte/chats/admin/clientes`, { headers: hdr(), params: { q } }));
+export const chatsIniciar = (cedula: string, texto: string) => pedir(() => axios.post(`${RAIZ}/soporte/chats/admin/iniciar`, { cedula, texto }, { headers: hdr() }));
 export const chatsResponder = (id: number, texto: string) => pedir(() => axios.post(`${RAIZ}/soporte/chats/admin/responder`, { id, texto }, { headers: hdr() }));
 
 /* ---------------- Soporte ---------------- */
