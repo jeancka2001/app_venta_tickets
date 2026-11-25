@@ -31,7 +31,18 @@ export const chatsLista = (filtros: Record<string, string | number>) => pedir(()
 export const chatsMensajes = (id: number, despues = 0) => pedir(() => axios.get(`${RAIZ}/soporte/chats/admin/mensajes`, { headers: hdr(), params: { id, ...(despues ? { despues } : {}) } }));
 export const chatsClientes = (q: string) => pedir(() => axios.get(`${RAIZ}/soporte/chats/admin/clientes`, { headers: hdr(), params: { q } }));
 export const chatsIniciar = (cedula: string, texto: string) => pedir(() => axios.post(`${RAIZ}/soporte/chats/admin/iniciar`, { cedula, texto }, { headers: hdr() }));
-export const chatsResponder = (id: number, texto: string) => pedir(() => axios.post(`${RAIZ}/soporte/chats/admin/responder`, { id, texto }, { headers: hdr() }));
+export const chatsResponder = (id: number, texto: string, imagen?: string) => pedir(() => axios.post(`${RAIZ}/soporte/chats/admin/responder`, { id, texto, ...(imagen ? { imagen } : {}) }, { headers: hdr() }));
+/* Sube una imagen al servidor de imágenes de siempre (el mismo de los comprobantes) y devuelve su URL */
+export const subirImagenChat = async (archivo: File): Promise<string> => {
+  try {
+    const form = new FormData();
+    form.append('file', archivo);
+    const { data } = await axios.post('https://codigomarret.online/upload/api/img', form);
+    return data?.success && data?.url ? String(data.url) : '';
+  } catch {
+    return '';
+  }
+};
 
 /* ---------------- Soporte ---------------- */
 export const soporteLista = (filtros: Record<string, string | number>) => pedir(() => axios.get(`${RAIZ}/soporte/admin`, { headers: hdr(), params: filtros }));

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { IonButton, IonIcon, IonTextarea, IonFooter, IonToolbar, IonRefresher, IonRefresherContent, IonModal, IonHeader, IonTitle, IonButtons, IonContent, IonInput, IonSpinner } from '@ionic/react';
 import { useNavigate } from 'react-router-dom';
-import { arrowBackOutline, sendOutline, addOutline, personOutline, closeOutline } from 'ionicons/icons';
+import { arrowBackOutline, sendOutline, addOutline, personOutline, closeOutline, attachOutline } from 'ionicons/icons';
 import PanelPagina, { PaginaFija } from '../components/PanelPagina';
-import { chatsLista, chatsMensajes, chatsResponder, chatsClientes, chatsIniciar } from '../utils/panelesAdmin';
+import { chatsLista, chatsMensajes, chatsResponder, chatsClientes, chatsIniciar, subirImagenChat } from '../utils/panelesAdmin';
 
 /* Admin > Chats: conversación en vivo con los clientes que escriben desde el chat de la página.
    Misma página que la web: lista con filtros, conversación y respuesta. Al responder, el chat queda asignado a quien contesta. */
@@ -36,7 +36,7 @@ interface Chat {
   ultimo_texto?: string; ultimo_de?: string; ultimo_en?: string; mio?: boolean; telefono?: string;
 }
 interface ClienteBusqueda { id: number; cedula: string; nombre: string; email?: string; telefono?: string; chat_activo?: number | null }
-interface Mensaje { id: number; de: 'cliente' | 'equipo' | 'sistema'; autor?: string; texto: string; creado_en?: string }
+interface Mensaje { id: number; de: 'cliente' | 'equipo' | 'sistema'; autor?: string; texto: string; imagen?: string | null; creado_en?: string }
 
 /* "Nuevo chat": escribirle a una persona que no ha abierto un chat. Si ya tiene uno activo, el mensaje va en ese. */
 const NuevoChat: React.FC<{ abierto: boolean; onCerrar: () => void; onCreado: (id: number) => void }> = ({ abierto, onCerrar, onCreado }) => {
@@ -176,6 +176,9 @@ const Conversacion: React.FC<{ id: number; onVolver: () => void }> = ({ id, onVo
   const [enviando, setEnviando] = useState(false);
   const ultimo = useRef(0);
   const fin = useRef<HTMLDivElement>(null);
+  const fotoRef = useRef<HTMLInputElement>(null);
+  const [foto, setFoto] = useState<{ archivo: File; vista: string } | null>(null);
+  const [ampliada, setAmpliada] = useState('');
 
   const cargar = useCallback(async (completo = false) => {
     const r = await chatsMensajes(id, completo ? 0 : ultimo.current);
@@ -196,13 +199,29 @@ const Conversacion: React.FC<{ id: number; onVolver: () => void }> = ({ id, onVo
   useEffect(() => { const i = setInterval(() => cargar(false), 5000); return () => clearInterval(i); }, [cargar]);
   useEffect(() => { fin.current?.scrollIntoView({ block: 'end' }); }, [mensajes]);
 
+  const elegirFoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    if (!f.type.startsWith('image/')) { setToast('Solo se pueden enviar imágenes.'); return; }
+    if (f.size > 8 * 1024 * 1024) { setToast('La imagen pesa más de 8 MB.'); return; }
+    if (foto) URL.revokeObjectURL(foto.vista);
+    setFoto({ archivo: f, vista: URL.createObjectURL(f) });
+  };
+  const quitarFoto = () => { if (foto) URL.revokeObjectURL(foto.vista); setFoto(null); };
+
   const enviar = async () => {
     const t = texto.trim();
-    if (!t || enviando) return;
+    if ((!t && !foto) || enviando) return;
     setEnviando(true);
-    const r = await chatsResponder(id, t);
+    let url = '';
+    if (foto) {
+      url = await subirImagenChat(foto.archivo);
+      if (!url) { setEnviando(false); setToast('No se pudo subir la imagen. Inténtalo de nuevo.'); return; }
+    }
+    const r = await chatsResponder(id, t, url);
     setEnviando(false);
-    if (r.success) { setTexto(''); cargar(false); } else setToast(r.message || 'No se pudo enviar la respuesta');
+    if (r.success) { setTexto(''); quitarFoto(); cargar(false); } else setToast(r.message || 'No se pudo enviar la respuesta');
   };
 
   const terminado = ticket && (ticket.estado === 'Resuelto' || ticket.estado === 'Cerrado');
@@ -229,7 +248,8 @@ const Conversacion: React.FC<{ id: number; onVolver: () => void }> = ({ id, onVo
             : (
               <div key={`${m.de}-${m.id}`} className={`pn-burbuja ${m.de === 'equipo' ? 'pn-burbuja-yo' : 'pn-burbuja-cliente'}`}>
                 <span className="pn-burbuja-autor">{m.autor}</span>
-                <p>{m.texto}</p>
+                {m.imagen && <img className="pn-burbuja-img" src={m.imagen} alt="Imagen" loading="lazy" onClick={() => setAmpliada(m.imagen || '')} />}
+                {m.texto ? <p>{m.texto}</p> : null}
                 <time>{hora(m.creado_en)}</time>
               </div>
             ))}
@@ -238,11 +258,23 @@ const Conversacion: React.FC<{ id: number; onVolver: () => void }> = ({ id, onVo
         </div>
       </PanelPagina>
       <IonFooter>
+        {foto && (
+          <div className="pn-foto-prev">
+            <img src={foto.vista} alt="Imagen que vas a enviar" />
+            <span>Se enviará esta imagen{texto.trim() ? ' con tu mensaje' : ''}.</span>
+            <IonButton size="small" fill="clear" onClick={quitarFoto} aria-label="Quitar la imagen"><IonIcon icon={closeOutline} slot="icon-only" /></IonButton>
+          </div>
+        )}
         <IonToolbar className="pn-redactar">
+          <input ref={fotoRef} type="file" accept="image/*" hidden onChange={elegirFoto} />
+          <IonButton slot="start" fill="clear" disabled={enviando} onClick={() => fotoRef.current?.click()} aria-label="Adjuntar una imagen"><IonIcon icon={attachOutline} slot="icon-only" /></IonButton>
           <IonTextarea autoGrow rows={1} fill="outline" placeholder="Escribe tu respuesta…" value={texto} maxlength={1000} onIonInput={(e) => setTexto(String(e.detail.value || ''))} />
-          <IonButton slot="end" className="pn-enviar" disabled={enviando || !texto.trim()} onClick={enviar} aria-label="Enviar respuesta"><IonIcon icon={sendOutline} slot="icon-only" /></IonButton>
+          <IonButton slot="end" className="pn-enviar" disabled={enviando || (!texto.trim() && !foto)} onClick={enviar} aria-label="Enviar respuesta"><IonIcon icon={sendOutline} slot="icon-only" /></IonButton>
         </IonToolbar>
       </IonFooter>
+      <IonModal isOpen={!!ampliada} onDidDismiss={() => setAmpliada('')}>
+        <IonContent className="pn-imagen-ampliada" onClick={() => setAmpliada('')}><img src={ampliada} alt="Imagen ampliada" /></IonContent>
+      </IonModal>
     </>
   );
 };
