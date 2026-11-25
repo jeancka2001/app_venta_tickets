@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  IonMenu, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem, IonIcon, IonLabel, IonListHeader, IonButtons, IonMenuButton,
+  IonMenu, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem, IonIcon, IonLabel, IonListHeader, IonButtons, IonMenuButton, IonBadge,
 } from '@ionic/react';
 import {
   menuOutline, pricetagOutline, statsChartOutline, shieldCheckmarkOutline, peopleOutline, cashOutline, cardOutline, returnDownBackOutline,
@@ -10,6 +10,7 @@ import {
 import { useLocation, useNavigate } from 'react-router-dom';
 import { obtenerStaffData } from '../utils/staffAuth';
 import { actualizarMisPaginas, EVENTO_PAGINAS, paginasVisibles, type PaginaApp } from '../utils/permisosPaginas';
+import { consultarChatsPendientes, iniciarSondeoChats, usePendientesChats } from '../utils/chatsPendientes';
 import marcaTickets from '../images/MARCA_TICKETS.png';
 import './MenuPaginas.css';
 
@@ -32,11 +33,15 @@ const FIJAS = [
    Es el IonMenuButton de Ionic: abre el menú con el MISMO controlador que usa <IonMenu>. Antes se llamaba a menuController importado de
    '@ionic/core', que es OTRA copia del controlador (la de @ionic/react viene de '@ionic/core/components'): no encontraba el menú y el botón
    no hacía nada (se notó al pasar la app a Android). */
-export const BotonMenu: React.FC = () => (
-  <IonButtons slot="start" className="boton-menu-wrap">
-    <IonMenuButton menu={ID_MENU} autoHide={false} className="boton-menu" aria-label="Abrir el menú" />
-  </IonButtons>
-);
+export const BotonMenu: React.FC = () => {
+  const chats = usePendientesChats();
+  return (
+    <IonButtons slot="start" className="boton-menu-wrap">
+      <IonMenuButton menu={ID_MENU} autoHide={false} className="boton-menu" aria-label={chats > 0 ? `Abrir el menú (${chats} chats por atender)` : 'Abrir el menú'} />
+      {chats > 0 && <span className="boton-menu-punto" aria-hidden="true">{chats > 9 ? '9+' : chats}</span>}
+    </IonButtons>
+  );
+};
 
 /* Cierra el menú desde el propio elemento (no depende de ningún controlador global ni del id del DOM) */
 let elementoMenu: HTMLIonMenuElement | null = null;
@@ -51,6 +56,7 @@ const MenuPaginas: React.FC = () => {
   const ubicacion = useLocation();
   const staff = obtenerStaffData();
   const [paginas, setPaginas] = useState<PaginaApp[]>(() => paginasVisibles());
+  const chatsPendientes = usePendientesChats();
 
   const recalcular = useCallback(() => setPaginas(paginasVisibles()), []);
 
@@ -71,6 +77,10 @@ const MenuPaginas: React.FC = () => {
   // Si cambia de usuario (cerró sesión y entró otro), se vuelve a leer
   useEffect(() => { recalcular(); actualizarMisPaginas(); }, [staff?.id, recalcular]);
 
+  // Contador de chats por atender (sondeo compartido con el botón de las 3 rayitas)
+  useEffect(() => iniciarSondeoChats(), []);
+  useEffect(() => { consultarChatsPendientes(); }, [staff?.id, paginas]);
+
   const ir = async (ruta: string) => {
     await cerrarMenu();
     navigate(ruta);
@@ -83,6 +93,7 @@ const MenuPaginas: React.FC = () => {
     <IonItem key={ruta} button detail={false} lines="none" className={`menu-item ${activa(ruta) ? 'menu-item-activo' : ''}`} onClick={() => ir(ruta)}>
       <IonIcon slot="start" icon={icono} />
       <IonLabel>{nombre}</IonLabel>
+      {ruta === '/chats' && chatsPendientes > 0 && <IonBadge slot="end" color="danger" className="menu-badge" aria-label={`${chatsPendientes} por atender`}>{chatsPendientes > 99 ? '99+' : chatsPendientes}</IonBadge>}
     </IonItem>
   );
 

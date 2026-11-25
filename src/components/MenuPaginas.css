@@ -27,3 +27,8 @@
   .menu-item ion-icon { color: #9aa6ff; }
   .menu-item-activo { --background: #232c42; }
 }
+
+/* Contador de chats por atender: punto rojo sobre el botón de las 3 rayitas y círculo en la fila "Chats" */
+.boton-menu-wrap { position: relative; }
+.boton-menu-punto { position: absolute; top: 4px; right: -2px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: #eb445a; color: #fff; font-size: 10px; font-weight: 800; line-height: 17px; text-align: center; pointer-events: none; box-shadow: 0 0 0 2px #2e3192; }
+.menu-badge { border-radius: 10px; font-weight: 800; }
