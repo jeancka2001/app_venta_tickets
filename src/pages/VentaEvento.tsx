@@ -15,6 +15,7 @@ import { MS_LOGIN_AUTH_HEADERS } from '../utils/msLoginAuth';
 import { staffAuthHeaders } from '../utils/staffAuth';
 import ZoomableImage from '../components/ZoomableImage';
 import { errorDeRuc } from '../utils/identificacion';
+import { CELULAR_GENERICO, celularFalta, correoFalta, correoSintetico, esCelularGenerico, esCorreoSintetico, sufijoAleatorio } from '../utils/clienteGenerico';
 import './VentaEvento.css';
 
 const URL_BASE = 'https://api.t-ickets.com/ms_login/api/v1';
@@ -75,8 +76,11 @@ const VentaEvento: React.FC = () => {
 
   /* Formulario de cliente nuevo */
   const [nombreNuevo, setNombreNuevo] = useState('');
-  const [emailNuevo, setEmailNuevo]   = useState('');
-  const [movilNuevo, setMovilNuevo]   = useState('');
+  /* Correo y celular: null = el vendedor no los ha tocado y se muestra el dato de relleno */
+  const [emailEscrito, setEmailEscrito] = useState<string | null>(null);
+  const [movilEscrito, setMovilEscrito] = useState<string | null>(null);
+  const [movilCivil, setMovilCivil]     = useState('');
+  const [sufijo, setSufijo]             = useState(sufijoAleatorio);
   const [ciudadNuevo, setCiudadNuevo] = useState('');
   /* De dónde salieron los datos precargados del formulario -- null cuando
      el vendedor tiene que llenarlo a mano (ni el SRI ni Manta encontraron
@@ -150,22 +154,27 @@ const VentaEvento: React.FC = () => {
         { headers: API_HDR }
       );
       if (data.success && data.data) {
+        const nombre = data.data.nombreCompleto ?? '';
+        const email = data.data.email ?? '';
+        const movil = data.data.movil ?? '';
         setCliente({
           id: Number(data.data.id) || 0,
           cedula,
-          nombreCompleto: data.data.nombreCompleto ?? '',
-          email: data.data.email ?? '',
-          movil: data.data.movil ?? '',
+          nombreCompleto: nombre,
+          // Si le falta el correo o el celular, la venta sale con el de relleno (no se cambia su ficha)
+          email: correoFalta(email) ? correoSintetico(nombre, cedula, sufijoAleatorio()) : email,
+          movil: celularFalta(movil) ? CELULAR_GENERICO : movil,
           ciudad: data.data.ciudad ?? '',
           esNuevo: false,
         });
       } else {
         setNoEncontrado(true);
-        setNombreNuevo(''); setEmailNuevo(''); setMovilNuevo(''); setCiudadNuevo('');
+        setNombreNuevo(''); setEmailEscrito(null); setMovilEscrito(null); setMovilCivil(''); setCiudadNuevo('');
+        setSufijo(sufijoAleatorio());
         const civil = await buscarEnRegistroCivil(cedula);
         if (civil) {
           setNombreNuevo(civil.name);
-          setMovilNuevo(civil.telefono);
+          setMovilCivil(civil.telefono);
           setCiudadNuevo(civil.direccion);
           setFuenteDatos(civil.fuente);
         }
@@ -199,24 +208,42 @@ const VentaEvento: React.FC = () => {
     }
   };
 
+  const correoAuto = correoSintetico(nombreNuevo, cedulaBusqueda.trim(), sufijo);
+  const movilAuto = celularFalta(movilCivil) ? CELULAR_GENERICO : movilCivil;
+  const emailNuevo = emailEscrito ?? correoAuto;
+  const movilNuevo = movilEscrito ?? movilAuto;
+  const usaCorreoRelleno = !emailNuevo.trim() || esCorreoSintetico(emailNuevo);
+  const usaCelularRelleno = !movilNuevo.trim() || esCelularGenerico(movilNuevo);
+
   const crearCliente = async () => {
     const cedula = cedulaBusqueda.trim();
     const rucMal = errorDeRuc(cedula);
     if (rucMal) { setError(rucMal); return; }
-    if (!nombreNuevo.trim() || !emailNuevo.trim() || !movilNuevo.trim()) {
-      setError('Completa nombre, correo y celular del nuevo cliente.');
+    if (!nombreNuevo.trim()) {
+      setError('Escribe el nombre del nuevo cliente.');
       return;
     }
+    // Un campo borrado vuelve al dato de relleno
+    const correo = emailNuevo.trim().toLowerCase() || correoAuto;
+    const celular = movilNuevo.trim() || movilAuto;
     setBuscando(true);
     setError('');
+    // Si choca el correo de relleno (muy raro), se genera otro y basta con volver a tocar "Crear cliente"
+    const fallo = (mensaje?: string) => {
+      if (esCorreoSintetico(correo) && /correo.*(registrad|cuenta)/i.test(mensaje || '')) {
+        setSufijo(sufijoAleatorio());
+        setEmailEscrito(null);
+        setError('Ese correo de relleno ya existía. Se generó otro: toca "Crear cliente" de nuevo.');
+      } else manejarErrorCrearCliente(mensaje);
+    };
     try {
       const { data } = await axios.post(
         `${URL_BASE}/crear_suscriptor`,
         {
           nombreCompleto: nombreNuevo.trim(),
-          email: emailNuevo.trim().toLowerCase(),
+          email: correo,
           password: cedula,
-          movil: movilNuevo.trim(),
+          movil: celular,
           ciudad: ciudadNuevo.trim(),
           cedula,
         },
@@ -227,22 +254,22 @@ const VentaEvento: React.FC = () => {
           id: Number(data.data?.id ?? data.id) || 0,
           cedula,
           nombreCompleto: nombreNuevo.trim(),
-          email: emailNuevo.trim().toLowerCase(),
-          movil: movilNuevo.trim(),
+          email: correo,
+          movil: celular,
           ciudad: ciudadNuevo.trim(),
           esNuevo: true,
         });
         setNoEncontrado(false);
         setIntentosCorreoDup(0);
       } else {
-        manejarErrorCrearCliente(data.message);
+        fallo(data.message);
       }
     } catch (err: unknown) {
       // El backend responde 409/400 (con mensaje) cuando el correo ya está
       // en uso -- axios lo trata como error y antes se perdía ese mensaje
       // detrás de un genérico "Error de conexión".
       const mensaje = axios.isAxiosError(err) ? err.response?.data?.message : undefined;
-      if (mensaje) manejarErrorCrearCliente(mensaje);
+      if (mensaje) fallo(mensaje);
       else setError('Error de conexión al crear el cliente.');
     } finally {
       setBuscando(false);
@@ -253,7 +280,7 @@ const VentaEvento: React.FC = () => {
     setCliente(null);
     setNoEncontrado(false);
     setCedulaBusqueda('');
-    setNombreNuevo(''); setEmailNuevo(''); setMovilNuevo(''); setCiudadNuevo('');
+    setNombreNuevo(''); setEmailEscrito(null); setMovilEscrito(null); setMovilCivil(''); setCiudadNuevo('');
     setFuenteDatos(null);
     setCompraPendiente(null);
   };
@@ -293,7 +320,7 @@ const VentaEvento: React.FC = () => {
     setCedulaBusqueda('');
     setNoEncontrado(false);
     setError('');
-    setNombreNuevo(''); setEmailNuevo(''); setMovilNuevo(''); setCiudadNuevo('');
+    setNombreNuevo(''); setEmailEscrito(null); setMovilEscrito(null); setMovilCivil(''); setCiudadNuevo('');
     setFuenteDatos(null);
     setPrecios([]);
     setCompraPendiente(null);
@@ -398,11 +425,20 @@ const VentaEvento: React.FC = () => {
                     </p>
                     <IonInput className="cliente-input" fill="outline" label="Nombre completo" labelPlacement="floating"
                       value={nombreNuevo} onIonInput={(e) => setNombreNuevo(e.detail.value ?? '')} />
+                    {(usaCorreoRelleno || usaCelularRelleno) && (
+                      <p className="cliente-relleno-aviso" role="status">
+                        <IonIcon icon={alertCircleOutline} />
+                        <span><strong>Pide los datos reales al cliente.</strong> Si no los tiene, puedes crearlo con los de relleno que ya están puestos{usaCorreoRelleno ? '; no recibirá nada por correo' : ''}.</span>
+                      </p>
+                    )}
                     <IonInput className="cliente-input" fill="outline" label="Correo electrónico" labelPlacement="floating" type="email"
-                      value={emailNuevo}
-                      onIonInput={(e) => { setEmailNuevo(e.detail.value ?? ''); setIntentosCorreoDup(0); }} />
+                      value={emailNuevo} clearInput
+                      helperText={usaCorreoRelleno ? 'De relleno · borra con la ✕ para escribir el real' : undefined}
+                      onIonInput={(e) => { setEmailEscrito(String(e.detail.value ?? '')); setIntentosCorreoDup(0); }} />
                     <IonInput className="cliente-input" fill="outline" label="Celular" labelPlacement="floating" type="tel"
-                      value={movilNuevo} onIonInput={(e) => setMovilNuevo(e.detail.value ?? '')} />
+                      value={movilNuevo} clearInput
+                      helperText={usaCelularRelleno ? 'De relleno · borra con la ✕ para escribir el real' : undefined}
+                      onIonInput={(e) => setMovilEscrito(String(e.detail.value ?? ''))} />
                     <IonInput className="cliente-input" fill="outline" label="Ciudad" labelPlacement="floating"
                       value={ciudadNuevo} onIonInput={(e) => setCiudadNuevo(e.detail.value ?? '')} />
                     <IonButton expand="block" className="btn-crear-cliente" onClick={crearCliente} disabled={buscando}>
@@ -417,6 +453,11 @@ const VentaEvento: React.FC = () => {
                 <div className="cliente-datos">
                   <span className="cliente-nombre">{cliente.nombreCompleto || cliente.cedula}</span>
                   <span className="cliente-sub">{cliente.cedula} · {cliente.email || 'sin correo'}</span>
+                  {(esCorreoSintetico(cliente.email) || esCelularGenerico(cliente.movil)) && (
+                    <span className="cliente-sub cliente-sub-relleno">
+                      Con {[esCorreoSintetico(cliente.email) && 'correo', esCelularGenerico(cliente.movil) && 'celular'].filter(Boolean).join(' y ')} de relleno. Si consigues los reales, cámbialos en Buscar cliente.
+                    </span>
+                  )}
                   {cliente.esNuevo && <IonBadge className="badge-nuevo">Cliente nuevo</IonBadge>}
                 </div>
                 <IonButton fill="clear" size="small" onClick={cambiarCliente}>Cambiar</IonButton>

@@ -24,6 +24,7 @@ import {
   obtenerDescuentosVendedor, aplicarDescuento, validarCodigoDescuento,
   type DescuentoVendedor, type CodigoDescuento,
 } from '../utils/descuentos';
+import { esCelularGenerico } from '../utils/clienteGenerico';
 import { puedeRegistrarCortesia } from '../utils/cortesias';
 import type { Cliente } from './VentaEvento';
 import './Pago.css';
@@ -940,7 +941,8 @@ const Pago: React.FC = () => {
      seleccionado. '_system' hace que Capacitor lo abra fuera del WebView. */
   const enviarPorWhatsapp = () => {
     if (!urlPago) return;
-    const numero = celularWhatsapp(cliente?.movil);
+    // El 0999999999 es de relleno (puede ser de otra persona): no se le escribe
+    const numero = esCelularGenerico(cliente?.movil) ? '' : celularWhatsapp(cliente?.movil);
     if (!numero) { setToast('El cliente no tiene celular registrado.'); return; }
     window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensajePago())}`, '_system');
   };

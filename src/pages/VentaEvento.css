@@ -89,6 +89,9 @@
   margin-top: 4px;
 }
 
+.cliente-relleno-aviso { display: flex; gap: 8px; margin: 0; font-size: 0.78rem; line-height: 1.4; color: #7a5200; background: #fff6d6; border-radius: 8px; padding: 8px 10px; }
+.cliente-relleno-aviso ion-icon { flex: 0 0 auto; font-size: 1.1rem; }
+.cliente-sub.cliente-sub-relleno { color: #9a5b00; margin-top: 4px; overflow-wrap: anywhere; }
 .cliente-encontrado {
   display: flex;
   align-items: center;
@@ -155,4 +158,9 @@
   .localidad-nombre { color: #e8ecf5; }
   .localidad-disp   { color: #9da5b4; }
   .localidad-precio { color: #7b8fdc; }
+}
+
+@media (prefers-color-scheme: dark) {
+  .cliente-relleno-aviso { background: #3a2f10; color: #ffd873; }
+  .cliente-sub.cliente-sub-relleno { color: #ffd873; }
 }
