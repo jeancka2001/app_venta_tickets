@@ -43,7 +43,7 @@ const TERMINOS: { titulo: string; texto: string }[] = [
   },
   {
     titulo: '9. Cancelación del evento',
-    texto: 'En caso de cancelación definitiva del evento, el cliente podrá solicitar el reembolso del valor de la entrada dentro de los 15 días siguientes al anuncio de la cancelación, escribiendo a infotickets@t-ickets.com o al WhatsApp +593 98 000 9000 con sus datos personales, el comprobante de pago y los datos de la cuenta bancaria para la transferencia. Los cargos por servicio no son reembolsables. El reembolso puede tardar hasta 30 días en acreditarse una vez validada la solicitud. Detalles en la Política de Reembolsos publicada en www.t-ickets.com.',
+    texto: 'En caso de cancelación definitiva del evento, el cliente podrá solicitar el reembolso del valor de la entrada dentro de los 15 días siguientes al anuncio de la cancelación, escribiendo a infotickets@t-ickets.com o al WhatsApp +593 99 907 0572 con sus datos personales, el comprobante de pago y los datos de la cuenta bancaria para la transferencia. Los cargos por servicio no son reembolsables. El reembolso puede tardar hasta 30 días en acreditarse una vez validada la solicitud. Detalles en la Política de Reembolsos publicada en www.t-ickets.com.',
   },
   {
     titulo: '10. Cuenta de usuario',
